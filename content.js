@@ -19,7 +19,8 @@
         sliderPos: 50,
         showFps: true,
         showLabels: true,
-        showRenderTime: false
+        showRenderTime: false,
+        enabled: true
     };
 
     // Load config from storage
@@ -406,7 +407,7 @@
         let lastVideoH = video.videoHeight;
 
         function render() {
-            if (!enabled) {
+            if (!config.enabled) {
                 if (wrapper.style.display !== 'none') wrapper.style.display = 'none';
                 requestAnimationFrame(render);
                 return;
@@ -589,7 +590,6 @@
     });
 
     // ==================== INIT ====================
-    // ==================== INIT ====================
 
     // Recursive function to find videos including inside Shadow DOM
     function findVideosInRoot(root, videos = []) {
@@ -686,8 +686,9 @@
     document.addEventListener('keydown', (e) => {
         // Alt+U: Toggle Upscaler
         if (e.altKey && e.key.toLowerCase() === 'u') {
-            enabled = !enabled;
-            showToast(enabled ? '✨ Anime4K ENABLED' : '○ Anime4K DISABLED');
+            config.enabled = !config.enabled;
+            saveConfig();
+            showToast(config.enabled ? '✨ Anime4K ENABLED' : '○ Anime4K DISABLED');
         }
     });
 

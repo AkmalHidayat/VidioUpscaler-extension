@@ -1,5 +1,18 @@
 # Anime4K Web Upscaler - Release Log
 
+## Version 2.4.9 (2025-12-06)
+
+### Fixed
+
+- **Stability Fix** - Resolved a syntax error in the content script that could prevent the extension from initializing correctly on some pages.
+
+## Version 2.4.8 (2025-12-06)
+
+### Changed
+
+- **UI Update** - Removed the "Apply Settings" button. All setting changes now apply instantly.
+- **Toggle Status** - You can now click the "Status: Active/Disabled" indicator in the popup to toggle the extension on/off.
+
 ## Version 2.4.7 (2025-12-06)
 
 ### Fixed
