@@ -423,7 +423,7 @@
             if (wrapper && video) {
                 // UI Visibility Updates
                 if (label) label.style.display = config.showLabels ? 'block' : 'none';
-                if (fpsLabel) fpsLabel.style.display = config.showFps ? 'block' : 'none';
+                if (fpsLabel) fpsLabel.style.display = (config.showFps || config.showRenderTime) ? 'block' : 'none';
 
                 if (sliderContainer) {
                     sliderContainer.style.display = config.compare ? 'block' : 'none';
@@ -478,6 +478,8 @@
                 }
 
                 label.innerHTML = `✨ ${modelNames[config.model] || config.model}<br><span style="opacity:0.7">${newW}×${newH}</span>`;
+                if (leftLabel) leftLabel.innerHTML = `✨ Enhanced<br><span style="opacity:0.7">${newW}×${newH}</span>`;
+                if (rightLabel) rightLabel.innerHTML = `📺 Original<br><span style="opacity:0.7">${video.videoWidth}×${video.videoHeight}</span>`;
             }
 
             // Render if video has data
@@ -519,11 +521,10 @@
                     const now = performance.now();
                     if (now - lastFpsTime >= 1000) {
                         if (fpsLabel) {
-                            let text = 'FPS: ' + frameCount;
-                            if (config.showRenderTime) {
-                                text += ` | ${renderTime.toFixed(2)}ms`;
-                            }
-                            fpsLabel.textContent = text;
+                            let parts = [];
+                            if (config.showFps) parts.push('FPS: ' + frameCount);
+                            if (config.showRenderTime) parts.push(`${renderTime.toFixed(2)}ms`);
+                            fpsLabel.textContent = parts.join(' | ');
                         }
                         frameCount = 0;
                         lastFpsTime = now;

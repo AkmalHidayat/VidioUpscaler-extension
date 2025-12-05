@@ -1,5 +1,12 @@
 # Anime4K Web Upscaler - Release Log
 
+## Version 2.5.0 (2025-12-06)
+
+### Fixed
+
+- **Comparison UI Bug** - Fixed an issue where the resolution labels in the comparison slider would not update when the video resolution changed.
+- **Metric Visibility** - Decoupled "Render Time" from "FPS Counter". You can now view render time without enabling the FPS counter.
+
 ## Version 2.4.9 (2025-12-06)
 
 ### Fixed
