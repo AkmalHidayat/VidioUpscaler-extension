@@ -1,5 +1,24 @@
 # Anime4K Web Upscaler - Release Log
 
+## Version 2.6.0 (2025-12-06)
+
+### Added
+
+- **Color Vibrance** - Added a saturation booster for more vivid colors (-100% to +100%).
+- **Video Debanding** - Added a filter to remove color banding (blocky gradients) in dark scenes.
+- **Model Rename** - Renamed "RealSR" to "Real-ESRGAN Lite" for clarity.
+
+## Version 2.5.1 (2025-12-06)
+
+### Added
+
+- **4x Native Resolution** - Added a "4x" option for high-end GPUs.
+- **Performance Warning** - Added a notification when FPS drops below 15 for 5 seconds.
+
+### Fixed
+
+- **Custom Scale UX** - Improved "Custom" scale input to apply settings while typing (debounced) instead of only on enter/blur.
+
 ## Version 2.5.0 (2025-12-06)
 
 ### Fixed

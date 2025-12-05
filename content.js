@@ -15,6 +15,8 @@
         resolution: '2x',
         customScale: 2.0,
         sharpen: 0.0,
+        vibrance: 0.1,
+        deband: false,
         compare: false,
         sliderPos: 50,
         showFps: true,
@@ -53,36 +55,91 @@
         console.log('[Anime4K] Available shaders:', Object.keys(window.Anime4KShaders || {}));
         console.log('[Anime4K] Looking for model:', config.model);
 
+        let shaderSource = '';
         if (window.Anime4KShaders && window.Anime4KShaders[config.model]) {
             console.log('[Anime4K] ✓ Using external shader:', config.model);
-            const shader = window.Anime4KShaders[config.model]('highp');
-            console.log('[Anime4K] Shader length:', shader.length);
-            return shader;
+            shaderSource = window.Anime4KShaders[config.model]('highp');
+        } else {
+            console.log('[Anime4K] ⚠ Using built-in fallback shader (external not found)');
+            shaderSource = `
+                precision highp float;
+                varying vec2 v_texCoord;
+                uniform sampler2D u_texture;
+                uniform vec2 u_texSize;
+                
+                void main() {
+                    vec2 px = 1.0 / u_texSize;
+                    vec3 c = texture2D(u_texture, v_texCoord).rgb;
+                    vec3 n = texture2D(u_texture, v_texCoord + vec2(0.0, -px.y)).rgb;
+                    vec3 s = texture2D(u_texture, v_texCoord + vec2(0.0, px.y)).rgb;
+                    vec3 e = texture2D(u_texture, v_texCoord + vec2(px.x, 0.0)).rgb;
+                    vec3 w = texture2D(u_texture, v_texCoord + vec2(-px.x, 0.0)).rgb;
+                    
+                    vec3 blur = (n + s + e + w) * 0.25;
+                    vec3 sharp = c + (c - blur) * 0.8;
+                    
+                    gl_FragColor = vec4(clamp(sharp, 0.0, 1.0), 1.0);
+                }
+            `;
         }
 
-        // Built-in fallback with STRONG sharpening
-        console.log('[Anime4K] ⚠ Using built-in fallback shader (external not found)');
-        return `
-            precision highp float;
-            varying vec2 v_texCoord;
-            uniform sampler2D u_texture;
-            uniform vec2 u_texSize;
+        // ==================== POST-PROCESSING INJECTION ====================
+        // Inject uniforms
+        shaderSource = shaderSource.replace('void main() {', `
+            uniform float u_vibrance;
+            uniform float u_deband;
             
-            void main() {
-                vec2 px = 1.0 / u_texSize;
-                vec3 c = texture2D(u_texture, v_texCoord).rgb;
-                vec3 n = texture2D(u_texture, v_texCoord + vec2(0.0, -px.y)).rgb;
-                vec3 s = texture2D(u_texture, v_texCoord + vec2(0.0, px.y)).rgb;
-                vec3 e = texture2D(u_texture, v_texCoord + vec2(px.x, 0.0)).rgb;
-                vec3 w = texture2D(u_texture, v_texCoord + vec2(-px.x, 0.0)).rgb;
-                
-                // Strong unsharp mask
-                vec3 blur = (n + s + e + w) * 0.25;
-                vec3 sharp = c + (c - blur) * 0.8;
-                
-                gl_FragColor = vec4(clamp(sharp, 0.0, 1.0), 1.0);
+            // RGB to HSV conversion
+            vec3 rgb2hsv(vec3 c) {
+                vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+                vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+                vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+                float d = q.x - min(q.w, q.y);
+                float e = 1.0e-10;
+                return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
             }
-        `;
+
+            // HSV to RGB conversion
+            vec3 hsv2rgb(vec3 c) {
+                vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+                vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+                return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+            }
+
+            vec3 applyVibrance(vec3 color, float strength) {
+                vec3 hsv = rgb2hsv(color);
+                hsv.y *= (1.0 + strength); // Increase Saturation
+                return hsv2rgb(hsv);
+            }
+
+            float rand(vec2 co) {
+                return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+            }
+
+            void main() {
+        `);
+
+        // Inject calls before final output
+        shaderSource = shaderSource.replace(/gl_FragColor\s*=\s*(.*?);/s, `
+            vec4 finalColor = $1;
+            vec3 res = finalColor.rgb;
+
+            // Vibrance
+            if (u_vibrance != 0.0) {
+                res = applyVibrance(res, u_vibrance);
+            }
+
+            // Deband (Simple Dither)
+            if (u_deband > 0.5) {
+                float noise = (rand(v_texCoord) - 0.5) / 255.0; // +/- 0.5/255 dither
+                res += noise;
+            }
+
+            gl_FragColor = vec4(clamp(res, 0.0, 1.0), finalColor.a);
+        `);
+
+        console.log('[Anime4K] Shader Post-Processing Injected.');
+        return shaderSource;
     }
 
     // ==================== RESOLUTION ====================
@@ -108,6 +165,8 @@
     let enabled = true;
     let processedVideos = new WeakMap();
     let uiReady = false;
+    let lowPerfFrameCount = 0;
+    let perfWarningShown = false;
 
     // ==================== WEBGL HELPERS ====================
     function createShader(gl, type, source) {
@@ -262,6 +321,8 @@
         const textureLoc = gl.getUniformLocation(program, 'u_texture');
         const texSizeLoc = gl.getUniformLocation(program, 'u_texSize');
         const sharpenLoc = gl.getUniformLocation(program, 'u_sharpen');
+        const vibranceLoc = gl.getUniformLocation(program, 'u_vibrance');
+        const debandLoc = gl.getUniformLocation(program, 'u_deband');
 
         gl.uniform1i(textureLoc, 0);
         if (texSizeLoc) {
@@ -269,6 +330,12 @@
         }
         if (sharpenLoc) {
             gl.uniform1f(sharpenLoc, config.sharpen);
+        }
+        if (vibranceLoc) {
+            gl.uniform1f(vibranceLoc, config.vibrance);
+        }
+        if (debandLoc) {
+            gl.uniform1f(debandLoc, config.deband ? 1.0 : 0.0);
         }
 
         // Function to setup attributes before drawing
@@ -501,6 +568,12 @@
                     if (sharpenLoc) {
                         gl.uniform1f(sharpenLoc, config.sharpen);
                     }
+                    if (vibranceLoc) {
+                        gl.uniform1f(vibranceLoc, config.vibrance);
+                    }
+                    if (debandLoc) {
+                        gl.uniform1f(debandLoc, config.deband ? 1.0 : 0.0);
+                    }
 
                     // Upload video frame to texture
                     gl.activeTexture(gl.TEXTURE0);
@@ -520,12 +593,25 @@
                     frameCount++;
                     const now = performance.now();
                     if (now - lastFpsTime >= 1000) {
+                        const currentFps = frameCount; // Store for valid check
                         if (fpsLabel) {
                             let parts = [];
-                            if (config.showFps) parts.push('FPS: ' + frameCount);
+                            if (config.showFps) parts.push('FPS: ' + currentFps);
                             if (config.showRenderTime) parts.push(`${renderTime.toFixed(2)}ms`);
                             fpsLabel.textContent = parts.join(' | ');
                         }
+
+                        // Performance Warning Logic
+                        if (running && currentFps < 15 && currentFps > 0) {
+                            lowPerfFrameCount++;
+                            if (lowPerfFrameCount >= 5 && !perfWarningShown) {
+                                showToast('⚠ Low Performance detected. Try a lower resolution.');
+                                perfWarningShown = true;
+                            }
+                        } else {
+                            lowPerfFrameCount = 0;
+                        }
+
                         frameCount = 0;
                         lastFpsTime = now;
                     }

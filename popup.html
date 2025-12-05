@@ -153,7 +153,7 @@
         <option value="anime4k_v41_hq">Anime4K HQ (Recommended)</option>
         <option value="anime4k_v41_fast">Anime4K Fast</option>
         <option value="fsr">FSR 1.0 (Crisp)</option>
-        <option value="realsr">Real-ESRGAN (Detail)</option>
+        <option value="realsr">Real-ESRGAN Lite (Detail)</option>
         <option value="xbrz">xBRZ (Pixel Art)</option>
         <option value="cas">CAS (Sharpen Only)</option>
         <option value="bicubic">Bicubic (Basis)</option>
@@ -170,6 +170,7 @@
                 <option value="4k">4K (UHD)</option>
                 <option value="8k">8K</option>
                 <option value="2x">2x Native</option>
+                <option value="4x">4x Native</option>
                 <option value="custom">Custom...</option>
             </select>
         </div>
@@ -185,6 +186,18 @@
         <input type="range" id="sharpen" min="-1.0" max="1.0" step="0.1" value="0">
         <span style="font-size:10px">+100%</span>
     </div>
+
+    <label>Color Vibrance: <span id="vibrance-val" style="color:#fff">10%</span></label>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span style="font-size:10px">-100%</span>
+        <input type="range" id="vibrance" min="-1.0" max="1.0" step="0.1" value="0.1">
+        <span style="font-size:10px">+100%</span>
+    </div>
+
+    <label class="checkbox-row">
+        <input type="checkbox" id="deband">
+        <span>Enable Video Debanding</span>
+    </label>
 
     <hr>
 

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Anime4K Web Upscaler",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "description": "Real-time video upscaling with Anime4K, FSR, and more",
   "content_scripts": [
     {

@@ -1,9 +1,12 @@
 // Default config
+// Default config
 const defaultConfig = {
     model: 'anime4k_v41_fast',
     resolution: '2x',
     customScale: 2.0,
     sharpen: 0.0,
+    vibrance: 0.1, // Default 10% saturation boost
+    deband: false,
     compare: false,
     showFps: true,
     showRenderTime: false,
@@ -18,6 +21,9 @@ const scale = document.getElementById('scale');
 const scaleCont = document.getElementById('scale-container');
 const sharp = document.getElementById('sharpen');
 const sharpVal = document.getElementById('sharp-val');
+const vibrance = document.getElementById('vibrance');
+const vibranceVal = document.getElementById('vibrance-val');
+const deband = document.getElementById('deband');
 const compare = document.getElementById('compare');
 const fps = document.getElementById('fps');
 const delay = document.getElementById('delay');
@@ -35,6 +41,8 @@ chrome.storage.sync.get(defaultConfig, (items) => {
     res.value = items.resolution;
     scale.value = items.customScale;
     sharp.value = items.sharpen;
+    vibrance.value = items.vibrance;
+    deband.checked = items.deband;
     compare.checked = items.compare;
     fps.checked = items.showFps;
     delay.checked = items.showRenderTime;
@@ -52,8 +60,9 @@ function updateUI() {
         scaleCont.style.display = 'none';
     }
 
-    // Sharpen Label
+    // Slider Labels
     sharpVal.textContent = Math.round(sharp.value * 100) + '%';
+    vibranceVal.textContent = Math.round(vibrance.value * 100) + '%';
 
     // Status Indicator
     if (currentConfig.enabled) {
@@ -78,6 +87,8 @@ function saveSettings() {
         resolution: res.value,
         customScale: parseFloat(scale.value) || 2.0,
         sharpen: parseFloat(sharp.value),
+        vibrance: parseFloat(vibrance.value),
+        deband: deband.checked,
         compare: compare.checked,
         showFps: fps.checked,
         showRenderTime: delay.checked,
@@ -103,20 +114,27 @@ statusContainer.addEventListener('click', () => {
 model.addEventListener('change', saveSettings);
 res.addEventListener('change', saveSettings);
 
-// Scale Input (Debounced slightly or just on change/blur)
+// Scale Input (Debounce for better UX)
 scale.addEventListener('change', saveSettings);
+let scaleTimer;
 scale.addEventListener('input', () => {
-    // Optional: Regex check for numbers
+    clearTimeout(scaleTimer);
+    scaleTimer = setTimeout(saveSettings, 800);
 });
 
-// Slider (Instant on drag? Maybe too heavy. On input update label, on change save)
+// Sliders
 sharp.addEventListener('input', () => {
     sharpVal.textContent = Math.round(sharp.value * 100) + '%';
 });
 sharp.addEventListener('change', saveSettings);
 
+vibrance.addEventListener('input', () => {
+    vibranceVal.textContent = Math.round(vibrance.value * 100) + '%';
+});
+vibrance.addEventListener('change', saveSettings);
+
 // Toggles
-[compare, fps, delay, labels].forEach(el => {
+[deband, compare, fps, delay, labels].forEach(el => {
     el.addEventListener('change', saveSettings);
 });
 
