@@ -53,7 +53,8 @@ function updateUI() {
 }
 
 // Apply
-btn.addEventListener('click', () => {
+// Apply logic
+function saveSettings() {
     const config = {
         model: model.value,
         resolution: res.value,
@@ -66,15 +67,19 @@ btn.addEventListener('click', () => {
     };
 
     chrome.storage.sync.set(config, () => {
-        // Optional: Show saved feedback
+        // Visual feedback
         const originalText = btn.textContent;
         btn.textContent = 'Saved!';
         setTimeout(() => btn.textContent = originalText, 1000);
-
-        // Reload current tab to fully apply heavy changes like resolution/model?
-        // OR rely on content script listener. For now, we rely on listener for light changes
-        // and content script can decide to re-init for heavy changes.
-
-        // Actually, let's just save. Content script will handle the rest via onChanged.
     });
+}
+
+btn.addEventListener('click', saveSettings);
+
+// Instant apply for toggles
+[compare, fps, delay, labels].forEach(el => {
+    el.addEventListener('change', saveSettings);
 });
+
+// Instant apply for sharpen (on release)
+sharp.addEventListener('change', saveSettings);

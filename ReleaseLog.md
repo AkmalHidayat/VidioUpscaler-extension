@@ -1,5 +1,17 @@
 # Anime4K Web Upscaler - Release Log
 
+## Version 2.4.5 (2025-12-06)
+
+### Fixed
+
+- **Instant Settings** - Toggles for Comparison, FPS, Render Time, and Badges now apply instantly without needing to click the "Apply" button.
+
+## Version 2.4.4 (2025-12-06)
+
+### Fixed
+
+- **Settings Toggle Bug** - Fixed an issue where disabling FPS counter, Comparison Slider, or Info Badges in settings didn't actually hide them on the video. All toggles now work instantly.
+
 ## Version 2.4.3 (2025-12-06)
 
 ### Fixed

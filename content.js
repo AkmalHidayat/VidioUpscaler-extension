@@ -298,146 +298,105 @@
             realsr: 'Real-ESRGAN'
         };
 
-        if (config.showLabels) {
-            const label = document.createElement('div');
-            // Centered top, slightly transparent green gradient
-            label.style.cssText = 'position:absolute;top:15px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,rgba(74,222,128,0.85),rgba(34,197,94,0.85));color:#000;padding:8px 12px;border-radius:8px;font:bold 12px system-ui;z-index:100;pointer-events:none;backdrop-filter:blur(4px);text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.1);';
-            label.innerHTML = `✨ ${modelNames[config.model] || config.model}<br><span style="opacity:0.7">${outW}×${outH}</span>`;
-            wrapper.appendChild(label);
-        }
+        // ==================== UI CREATION ====================
 
-        let fpsLabel = null;
-        if (config.showFps) {
-            fpsLabel = document.createElement('div');
-            // Centered top, below the label
-            fpsLabel.style.cssText = 'position:absolute;top:65px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);color:#4ade80;padding:4px 10px;border-radius:6px;font:bold 11px monospace;z-index:99;pointer-events:none;backdrop-filter:blur(2px);';
-            fpsLabel.textContent = 'FPS: --';
-            wrapper.appendChild(fpsLabel);
-        }
+        // Label
+        const label = document.createElement('div');
+        label.style.cssText = 'position:absolute;top:15px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,rgba(74,222,128,0.85),rgba(34,197,94,0.85));color:#000;padding:8px 12px;border-radius:8px;font:bold 12px system-ui;z-index:100;pointer-events:none;backdrop-filter:blur(4px);text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.1);';
+        label.innerHTML = `✨ ${modelNames[config.model] || config.model}<br><span style="opacity:0.7">${outW}×${outH}</span>`;
+        wrapper.appendChild(label);
 
+        // FPS Label
+        const fpsLabel = document.createElement('div');
+        fpsLabel.style.cssText = 'position:absolute;top:65px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);color:#4ade80;padding:4px 10px;border-radius:6px;font:bold 11px monospace;z-index:99;pointer-events:none;backdrop-filter:blur(2px);';
+        fpsLabel.textContent = 'FPS: --';
+        wrapper.appendChild(fpsLabel);
 
-        // Comparison slider
-        if (config.compare) {
-            // Slider container
-            const sliderContainer = document.createElement('div');
-            sliderContainer.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:200;pointer-events:none;';
-            wrapper.appendChild(sliderContainer);
+        // Comparison Slider
+        const sliderContainer = document.createElement('div');
+        sliderContainer.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:200;pointer-events:none;';
+        wrapper.appendChild(sliderContainer);
 
-            // Slider line
-            const slider = document.createElement('div');
-            slider.style.cssText = `
-                position:absolute;
-                top:0;
-                left:${config.sliderPos}%;
-                width:4px;
-                height:100%;
-                background:linear-gradient(180deg, #4ade80 0%, #22c55e 50%, #4ade80 100%);
-                box-shadow: 0 0 10px rgba(74,222,128,0.8), 0 0 20px rgba(74,222,128,0.4);
-                z-index:201;
-                cursor:ew-resize;
-                pointer-events:auto;
-                transform:translateX(-50%);
-            `;
+        const slider = document.createElement('div');
+        slider.style.cssText = `
+            position:absolute;
+            top:0;
+            left:${config.sliderPos}%;
+            width:4px;
+            height:100%;
+            background:linear-gradient(180deg, #4ade80 0%, #22c55e 50%, #4ade80 100%);
+            box-shadow: 0 0 10px rgba(74,222,128,0.8), 0 0 20px rgba(74,222,128,0.4);
+            z-index:201;
+            cursor:ew-resize;
+            pointer-events:auto;
+            transform:translateX(-50%);
+        `;
 
-            // Slider handle (circle)
-            const handle = document.createElement('div');
-            handle.style.cssText = `
-                position:absolute;
-                top:50%;
-                left:50%;
-                transform:translate(-50%,-50%);
-                width:44px;
-                height:44px;
-                background:linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
-                border:4px solid #fff;
-                border-radius:50%;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                font-size:20px;
-                color:#fff;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.3), 0 0 15px rgba(74,222,128,0.5);
-                cursor:ew-resize;
-                user-select:none;
-            `;
-            handle.textContent = '⟷';
-            slider.appendChild(handle);
-            sliderContainer.appendChild(slider);
+        const handle = document.createElement('div');
+        handle.style.cssText = `
+            position:absolute;
+            top:50%;
+            left:50%;
+            transform:translate(-50%,-50%);
+            width:44px;
+            height:44px;
+            background:linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+            border:4px solid #fff;
+            border-radius:50%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:20px;
+            color:#fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3), 0 0 15px rgba(74,222,128,0.5);
+            cursor:ew-resize;
+            user-select:none;
+        `;
+        handle.textContent = '⟷';
+        slider.appendChild(handle);
+        sliderContainer.appendChild(slider);
 
-            // Arrow indicators at top and bottom
-            const topArrow = document.createElement('div');
-            topArrow.style.cssText = 'position:absolute;top:10px;left:50%;transform:translateX(-50%);color:#fff;font-size:12px;text-shadow:0 1px 3px rgba(0,0,0,0.8);';
-            topArrow.textContent = '▼';
-            slider.appendChild(topArrow);
+        // Arrows
+        const topArrow = document.createElement('div');
+        topArrow.style.cssText = 'position:absolute;top:10px;left:50%;transform:translateX(-50%);color:#fff;font-size:12px;text-shadow:0 1px 3px rgba(0,0,0,0.8);';
+        topArrow.textContent = '▼';
+        slider.appendChild(topArrow);
 
-            const bottomArrow = document.createElement('div');
-            bottomArrow.style.cssText = 'position:absolute;bottom:10px;left:50%;transform:translateX(-50%);color:#fff;font-size:12px;text-shadow:0 1px 3px rgba(0,0,0,0.8);';
-            bottomArrow.textContent = '▲';
-            slider.appendChild(bottomArrow);
+        const bottomArrow = document.createElement('div');
+        bottomArrow.style.cssText = 'position:absolute;bottom:10px;left:50%;transform:translateX(-50%);color:#fff;font-size:12px;text-shadow:0 1px 3px rgba(0,0,0,0.8);';
+        bottomArrow.textContent = '▲';
+        slider.appendChild(bottomArrow);
 
-            // Set initial clip path
-            canvas.style.clipPath = `inset(0 ${100 - config.sliderPos}% 0 0)`;
+        // Comparison Labels
+        const leftLabel = document.createElement('div');
+        leftLabel.style.cssText = 'position:absolute;top:10px;left:10px;background:linear-gradient(135deg,#4ade80,#22c55e);color:#000;padding:8px 12px;border-radius:8px;font:bold 12px system-ui;z-index:100;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
+        leftLabel.innerHTML = `✨ Enhanced<br><span style="opacity:0.7">${outW}×${outH}</span>`;
+        sliderContainer.appendChild(leftLabel);
 
-            // Drag state
-            let dragging = false;
+        const rightLabel = document.createElement('div');
+        rightLabel.style.cssText = 'position:absolute;top:10px;right:10px;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;padding:8px 12px;border-radius:8px;font:bold 12px system-ui;z-index:100;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
+        rightLabel.innerHTML = `📺 Original<br><span style="opacity:0.7">${video.videoWidth}×${video.videoHeight}</span>`;
+        sliderContainer.appendChild(rightLabel);
 
-            function updateSlider(clientX) {
-                const rect = sliderContainer.getBoundingClientRect();
-                const pct = Math.max(5, Math.min(95, ((clientX - rect.left) / rect.width) * 100));
-                config.sliderPos = pct;
-                slider.style.left = pct + '%';
+        // Slider Logic
+        let dragging = false;
+
+        function updateSlider(clientX) {
+            const rect = sliderContainer.getBoundingClientRect();
+            const pct = Math.max(5, Math.min(95, ((clientX - rect.left) / rect.width) * 100));
+            config.sliderPos = pct;
+            slider.style.left = pct + '%';
+            if (config.compare) {
                 canvas.style.clipPath = `inset(0 ${100 - pct}% 0 0)`;
             }
-
-            // Mouse events
-            slider.addEventListener('mousedown', (e) => {
-                dragging = true;
-                e.preventDefault();
-            });
-
-            document.addEventListener('mousemove', (e) => {
-                if (!dragging) return;
-                updateSlider(e.clientX);
-            });
-
-            document.addEventListener('mouseup', () => {
-                if (dragging) {
-                    dragging = false;
-                    saveConfig();
-                }
-            });
-
-            // Touch events
-            slider.addEventListener('touchstart', (e) => {
-                dragging = true;
-                e.preventDefault();
-            }, { passive: false });
-
-            document.addEventListener('touchmove', (e) => {
-                if (!dragging) return;
-                if (e.touches.length > 0) {
-                    updateSlider(e.touches[0].clientX);
-                }
-            }, { passive: true });
-
-            document.addEventListener('touchend', () => {
-                if (dragging) {
-                    dragging = false;
-                    saveConfig();
-                }
-            });
-
-            // Labels
-            const leftLabel = document.createElement('div');
-            leftLabel.style.cssText = 'position:absolute;top:10px;left:10px;background:linear-gradient(135deg,#4ade80,#22c55e);color:#000;padding:8px 12px;border-radius:8px;font:bold 12px system-ui;z-index:100;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
-            leftLabel.innerHTML = `✨ Enhanced<br><span style="opacity:0.7">${outW}×${outH}</span>`;
-            sliderContainer.appendChild(leftLabel);
-
-            const rightLabel = document.createElement('div');
-            rightLabel.style.cssText = 'position:absolute;top:10px;right:10px;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;padding:8px 12px;border-radius:8px;font:bold 12px system-ui;z-index:100;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
-            rightLabel.innerHTML = `📺 Original<br><span style="opacity:0.7">${video.videoWidth}×${video.videoHeight}</span>`;
-            sliderContainer.appendChild(rightLabel);
         }
+
+        slider.addEventListener('mousedown', (e) => { dragging = true; e.preventDefault(); });
+        document.addEventListener('mousemove', (e) => { if (dragging) updateSlider(e.clientX); });
+        document.addEventListener('mouseup', () => { if (dragging) { dragging = false; saveConfig(); } });
+        slider.addEventListener('touchstart', (e) => { dragging = true; e.preventDefault(); }, { passive: false });
+        document.addEventListener('touchmove', (e) => { if (dragging && e.touches.length) updateSlider(e.touches[0].clientX); }, { passive: true });
+        document.addEventListener('touchend', () => { if (dragging) { dragging = false; saveConfig(); } });
 
         // Render loop
         let frameCount = 0;
@@ -461,6 +420,15 @@
 
             // Sync wrapper position/size with video (handles centering/resizing)
             if (wrapper && video) {
+                // UI Visibility Updates
+                if (label) label.style.display = config.showLabels ? 'block' : 'none';
+                if (fpsLabel) fpsLabel.style.display = config.showFps ? 'block' : 'none';
+
+                if (sliderContainer) {
+                    sliderContainer.style.display = config.compare ? 'block' : 'none';
+                    canvas.style.clipPath = config.compare ? `inset(0 ${100 - config.sliderPos}% 0 0)` : 'none';
+                }
+
                 // Helper to calculate the actual visible video rect (accounting for object-fit: contain)
                 function getVisibleVideoRect(v) {
                     const videoRatio = v.videoWidth / v.videoHeight;
