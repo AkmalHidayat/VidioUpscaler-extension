@@ -1,5 +1,17 @@
 # Anime4K Web Upscaler - Release Log
 
+## Version 2.4.3 (2025-12-06)
+
+### Fixed
+
+- **Fullscreen Alignment** - Fixed an issue where the upscaler overlay would not be centered correctly on videos with black bars (letterbox/pillarbox) in fullscreen mode.
+
+## Version 2.4.2 (2025-12-06)
+
+### Fixed
+
+- **YouTube Compatibility** - Fixed an issue where the new CORS bypass was breaking YouTube video playback. YouTube is now whitelisted and bypasses the bypass.
+
 ## Version 2.4.1 (2025-12-06)
 
 ### Added
@@ -12,7 +24,7 @@
 
 ### Added
 
-- **Global CORS Bypass** - Implemented a "Nuclear" solution to bypass video security restrictions. The extension now forces the browser to allow video processing on almost all websites (including restricted ones like NontonAnimeID).
+- **Global CORS Bypass** - Implemented a "Nuclear" solution to bypass video security restrictions. The extension now forces the browser to allow video processing on almost all websites.
 
 ## Version 2.3.2 (2025-12-06)
 

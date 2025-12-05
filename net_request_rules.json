@@ -23,6 +23,14 @@
                 "media",
                 "xmlhttprequest",
                 "other"
+            ],
+            "excludedInitiatorDomains": [
+                "youtube.com",
+                "www.youtube.com"
+            ],
+            "excludedRequestDomains": [
+                "youtube.com",
+                "googlevideo.com"
             ]
         }
     }

@@ -1,6 +1,6 @@
 # ⚡ VidioUpscaler Extension (Anime4K Web)
 
-![Version](https://img.shields.io/badge/version-2.4.1-green?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.4.3-green?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-Stable-4ade80?style=for-the-badge)
 

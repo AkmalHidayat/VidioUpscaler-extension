@@ -461,10 +461,36 @@
 
             // Sync wrapper position/size with video (handles centering/resizing)
             if (wrapper && video) {
-                wrapper.style.top = video.offsetTop + 'px';
-                wrapper.style.left = video.offsetLeft + 'px';
-                wrapper.style.width = video.offsetWidth + 'px';
-                wrapper.style.height = video.offsetHeight + 'px';
+                // Helper to calculate the actual visible video rect (accounting for object-fit: contain)
+                function getVisibleVideoRect(v) {
+                    const videoRatio = v.videoWidth / v.videoHeight;
+                    const elementRatio = v.offsetWidth / v.offsetHeight;
+
+                    let width, height, top, left;
+
+                    if (elementRatio > videoRatio) {
+                        // Pillarbox (bars on left/right)
+                        height = v.offsetHeight;
+                        width = height * videoRatio;
+                        top = v.offsetTop;
+                        left = v.offsetLeft + (v.offsetWidth - width) / 2;
+                    } else {
+                        // Letterbox (bars on top/bottom)
+                        width = v.offsetWidth;
+                        height = width / videoRatio;
+                        left = v.offsetLeft;
+                        top = v.offsetTop + (v.offsetHeight - height) / 2;
+                    }
+
+                    return { width, height, top, left };
+                }
+
+                const rect = getVisibleVideoRect(video);
+
+                wrapper.style.top = rect.top + 'px';
+                wrapper.style.left = rect.left + 'px';
+                wrapper.style.width = rect.width + 'px';
+                wrapper.style.height = rect.height + 'px';
             }
 
 
