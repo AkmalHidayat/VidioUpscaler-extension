@@ -1,5 +1,13 @@
 # Anime4K Web Upscaler - Release Log
 
+## Version 2.2.3 (2025-12-05)
+
+### Improved
+
+- **Fullscreen Experience** - Automatically hides the toggle button and settings panel when video goes fullscreen for a distraction-free viewing experience.
+
+---
+
 ## Version 2.2.2 (2025-12-05)
 
 ### Fixed

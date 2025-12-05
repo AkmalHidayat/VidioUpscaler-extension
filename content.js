@@ -701,6 +701,21 @@
             if (e.altKey && e.key.toLowerCase() === 'a') btn.click();
             if (e.altKey && e.key.toLowerCase() === 's') toggleSettings();
         });
+
+        // Hide UI in fullscreen
+        function onFullscreenChange() {
+            const isFs = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+            if (isFs) {
+                btn.style.display = 'none';
+                settingsBtn.style.display = 'none';
+                panel.style.display = 'none';
+            } else {
+                btn.style.display = 'block';
+                settingsBtn.style.display = 'flex';
+            }
+        }
+        document.addEventListener('fullscreenchange', onFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', onFullscreenChange);
     }
 
     // ==================== INIT ====================
