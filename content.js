@@ -13,10 +13,13 @@
     let config = {
         model: 'anime4k_v41_fast',
         resolution: '2x',
+        customScale: 2.0,
+        sharpen: 0.0,
         compare: false,
         sliderPos: 50,
         showFps: true,
-        showLabels: true
+        showLabels: true,
+        showRenderTime: false
     };
 
     // Load config from storage
@@ -83,6 +86,11 @@
 
     // ==================== RESOLUTION ====================
     function getTargetResolution(videoW, videoH) {
+        if (config.resolution === 'custom') {
+            const scale = Math.max(0.1, Math.min(10.0, parseFloat(config.customScale) || 2.0));
+            return [Math.round(videoW * scale), Math.round(videoH * scale)];
+        }
+
         switch (config.resolution) {
             case '2x': return [videoW * 2, videoH * 2];
             case '4x': return [videoW * 4, videoH * 4];
@@ -90,6 +98,7 @@
             case '1080p': return [1920, 1080];
             case '2k': return [2560, 1440];
             case '4k': return [3840, 2160];
+            case '8k': return [7680, 4320];
             default: return [videoW * 2, videoH * 2];
         }
     }
@@ -149,17 +158,28 @@
         // Get video's actual position and size
 
 
-        // Create wrapper - position it exactly over the video
         // Create wrapper - position relative to video parent
         const wrapper = document.createElement('div');
         wrapper.className = 'anime4k-wrapper';
-        wrapper.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none;overflow:hidden;';
+        wrapper.style.cssText = 'position:absolute;z-index:2147483640;pointer-events:none;overflow:hidden;transform-origin:0 0;';
+
+        // Match video position within parent
+        wrapper.style.top = video.offsetTop + 'px';
+        wrapper.style.left = video.offsetLeft + 'px';
+        wrapper.style.width = video.offsetWidth + 'px';
+        wrapper.style.height = video.offsetHeight + 'px';
 
         // Ensure parent has position
         if (getComputedStyle(parent).position === 'static') {
             parent.style.position = 'relative';
         }
-        parent.appendChild(wrapper);
+
+        // Insert AFTER video to ensure stacking (Video < Wrapper < Controls)
+        if (video.nextSibling) {
+            parent.insertBefore(wrapper, video.nextSibling);
+        } else {
+            parent.appendChild(wrapper);
+        }
 
         // Create canvas
         const canvas = document.createElement('canvas');
@@ -240,10 +260,14 @@
         // Set uniforms
         const textureLoc = gl.getUniformLocation(program, 'u_texture');
         const texSizeLoc = gl.getUniformLocation(program, 'u_texSize');
+        const sharpenLoc = gl.getUniformLocation(program, 'u_sharpen');
 
         gl.uniform1i(textureLoc, 0);
         if (texSizeLoc) {
             gl.uniform2f(texSizeLoc, video.videoWidth, video.videoHeight);
+        }
+        if (sharpenLoc) {
+            gl.uniform1f(sharpenLoc, config.sharpen);
         }
 
         // Function to setup attributes before drawing
@@ -421,11 +445,25 @@
         let lastVideoH = video.videoHeight;
 
         function render() {
-            if (!running || !enabled) {
+            if (!enabled) {
+                if (wrapper.style.display !== 'none') wrapper.style.display = 'none';
+                requestAnimationFrame(render);
+                return;
+            }
+            if (wrapper.style.display === 'none') wrapper.style.display = 'block';
+
+            if (!running) {
                 requestAnimationFrame(render);
                 return;
             }
 
+            // Sync wrapper position/size with video (handles centering/resizing)
+            if (wrapper && video) {
+                wrapper.style.top = video.offsetTop + 'px';
+                wrapper.style.left = video.offsetLeft + 'px';
+                wrapper.style.width = video.offsetWidth + 'px';
+                wrapper.style.height = video.offsetHeight + 'px';
+            }
 
 
             // Check for resolution change
@@ -448,6 +486,8 @@
             // Render if video has data
             if (video.readyState >= video.HAVE_CURRENT_DATA) {
                 try {
+                    const renderStart = performance.now();
+
                     // Ensure program is active
                     gl.useProgram(program);
 
@@ -458,6 +498,9 @@
                     gl.uniform1i(textureLoc, 0);
                     if (texSizeLoc) {
                         gl.uniform2f(texSizeLoc, video.videoWidth, video.videoHeight);
+                    }
+                    if (sharpenLoc) {
+                        gl.uniform1f(sharpenLoc, config.sharpen);
                     }
 
                     // Upload video frame to texture
@@ -471,11 +514,20 @@
                     gl.viewport(0, 0, canvas.width, canvas.height);
                     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
+                    const renderEnd = performance.now();
+                    const renderTime = renderEnd - renderStart;
+
                     // FPS counter
                     frameCount++;
                     const now = performance.now();
                     if (now - lastFpsTime >= 1000) {
-                        if (fpsLabel) fpsLabel.textContent = 'FPS: ' + frameCount;
+                        if (fpsLabel) {
+                            let text = 'FPS: ' + frameCount;
+                            if (config.showRenderTime) {
+                                text += ` | ${renderTime.toFixed(2)}ms`;
+                            }
+                            fpsLabel.textContent = text;
+                        }
                         frameCount = 0;
                         lastFpsTime = now;
                     }
@@ -537,10 +589,10 @@
         panel.style.cssText = 'position:fixed;bottom:130px;right:20px;z-index:2147483647;width:280px;background:#111;border:1px solid #333;border-radius:14px;padding:16px;font-family:system-ui;color:#fff;display:none;';
 
         panel.innerHTML = `
-            <div style="font-size:16px;font-weight:bold;color:#4ade80;margin-bottom:14px;">⚡ Anime4K v2.1.3</div>
+            <div style="font-size:16px;font-weight:bold;color:#4ade80;margin-bottom:14px;">⚡ Anime4K v2.2.0</div>
             
             <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">MODEL</label>
-            <select id="a4k-model" style="width:100%;padding:10px;margin-bottom:12px;background:#222;border:1px solid #444;border-radius:8px;color:#fff;">
+            <select id="a4k-model" style="width:100%;padding:8px;margin-bottom:12px;background:#222;border:1px solid #444;border-radius:8px;color:#fff;">
                 <option value="debug">🔧 Debug (Grayscale)</option>
                 <option value="anime4k_v41_fast">Anime4K Fast</option>
                 <option value="anime4k_v41_hq">Anime4K HQ</option>
@@ -552,25 +604,37 @@
             </select>
             
             <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">RESOLUTION</label>
-            <select id="a4k-res" style="width:100%;padding:10px;margin-bottom:12px;background:#222;border:1px solid #444;border-radius:8px;color:#fff;">
-                <option value="2x">2x (Auto)</option>
-                <option value="4x">4x</option>
-                <option value="8x">8x</option>
-                <option value="1080p">1080p FHD</option>
-                <option value="2k">2K QHD</option>
-                <option value="4k">4K UHD</option>
-            </select>
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+                <select id="a4k-res" style="flex:1;padding:8px;background:#222;border:1px solid #444;border-radius:8px;color:#fff;">
+                    <option value="custom">Custom Scale</option>
+                    <option value="2x">2x (Auto)</option>
+                    <option value="4x">4x</option>
+                    <option value="8x">8x</option>
+                    <option value="1080p">1080p FHD</option>
+                    <option value="2k">2K QHD</option>
+                    <option value="4k">4K UHD</option>
+                    <option value="8k">8K UHD</option>
+                </select>
+                <input type="number" id="a4k-scale" step="0.1" min="0.1" max="10" value="2.0" style="width:60px;padding:8px;background:#222;border:1px solid #444;border-radius:8px;color:#fff;display:none;">
+            </div>
+
+            <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">SHARPENING: <span id="a4k-sharp-val">0%</span></label>
+            <input type="range" id="a4k-sharp" min="-1" max="1" step="0.1" style="width:100%;margin-bottom:12px;cursor:pointer;">
             
             <div style="background:#1a1a1a;border-radius:8px;padding:10px;margin-bottom:12px;">
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px;">
                     <input type="checkbox" id="a4k-compare">
                     <span>🔀 Compare Mode</span>
                 </label>
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px;">
                     <input type="checkbox" id="a4k-fps">
                     <span>📊 Show FPS</span>
                 </label>
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px;">
+                    <input type="checkbox" id="a4k-delay">
+                    <span>⏱️ Show Render Delay</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
                     <input type="checkbox" id="a4k-labels">
                     <span>🏷️ Show info Overlays</span>
                 </label>
@@ -579,24 +643,51 @@
             <div style="font-size:10px;color:#666;text-align:center;margin-bottom:10px;">Alt+A: Toggle | Alt+S: Settings</div>
             
             <button id="a4k-apply" style="width:100%;padding:12px;background:#4ade80;border:none;border-radius:8px;color:#000;font-weight:bold;cursor:pointer;">
-                ✓ Apply & Reload
+                ✓ Apply Settings
             </button>
         `;
         document.body.appendChild(panel);
 
-        // Set current values
+        // Control References
+        const resSlct = document.getElementById('a4k-res');
+        const scaleInp = document.getElementById('a4k-scale');
+        const sharpInp = document.getElementById('a4k-sharp');
+        const sharpVal = document.getElementById('a4k-sharp-val');
+
+        // Logic to show/hide scale input
+        resSlct.onchange = () => {
+            scaleInp.style.display = resSlct.value === 'custom' ? 'block' : 'none';
+        };
+
+        // Live slider update
+        sharpInp.oninput = () => {
+            sharpVal.textContent = Math.round(sharpInp.value * 100) + '%';
+        };
+
+        // Set initial values from config
         document.getElementById('a4k-model').value = config.model;
-        document.getElementById('a4k-res').value = config.resolution;
+        resSlct.value = config.resolution;
+        scaleInp.value = config.customScale || 2.0;
+        scaleInp.style.display = config.resolution === 'custom' ? 'block' : 'none';
+        sharpInp.value = config.sharpen || 0.0;
+        sharpVal.textContent = Math.round((config.sharpen || 0.0) * 100) + '%';
         document.getElementById('a4k-compare').checked = config.compare;
         document.getElementById('a4k-fps').checked = config.showFps;
+        document.getElementById('a4k-delay').checked = config.showRenderTime;
         document.getElementById('a4k-labels').checked = config.showLabels;
 
         document.getElementById('a4k-apply').onclick = () => {
+            const oldModel = config.model;
+            // Update config
             config.model = document.getElementById('a4k-model').value;
-            config.resolution = document.getElementById('a4k-res').value;
+            config.resolution = resSlct.value;
+            config.customScale = parseFloat(scaleInp.value);
+            config.sharpen = parseFloat(sharpInp.value);
             config.compare = document.getElementById('a4k-compare').checked;
             config.showFps = document.getElementById('a4k-fps').checked;
+            config.showRenderTime = document.getElementById('a4k-delay').checked;
             config.showLabels = document.getElementById('a4k-labels').checked;
+
             saveConfig();
             location.reload();
         };

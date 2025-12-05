@@ -8,6 +8,7 @@ window.Anime4KShaders.debug = function (precision) {
 varying vec2 v_texCoord;
 uniform sampler2D u_texture;
 uniform vec2 u_texSize;
+uniform float u_sharpen;
 
 void main() {
     vec3 c = texture2D(u_texture, v_texCoord).rgb;

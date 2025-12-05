@@ -9,6 +9,8 @@ window.Anime4KShaders.xbrz = function (precision) {
 varying vec2 v_texCoord;
 uniform sampler2D u_texture;
 uniform vec2 u_texSize;
+uniform float u_sharpen;
+uniform float u_sharpen;
 
 #define XBRZ_THRESHOLD 0.05
 
@@ -110,6 +112,18 @@ void main() {
             float blend = smoothstep(0.1, 0.3, edgeStrength) * 0.3;
             result = mix(c, closest, blend);
         }
+    }
+    
+    // Final light sharpening to enhance details
+    if (u_sharpen > -0.9) {
+        vec3 N = texture2D(u_texture, v_texCoord + vec2(0.0, -px.y)).rgb;
+        vec3 S = texture2D(u_texture, v_texCoord + vec2(0.0, px.y)).rgb;
+        vec3 E = texture2D(u_texture, v_texCoord + vec2(px.x, 0.0)).rgb;
+        vec3 W = texture2D(u_texture, v_texCoord + vec2(-px.x, 0.0)).rgb;
+        vec3 blur = (N + S + E + W) * 0.25;
+        
+        float strength = 0.15 * (1.0 + u_sharpen);
+        result = result + (result - blur) * strength;
     }
     
     gl_FragColor = vec4(result, 1.0);

@@ -8,6 +8,8 @@ window.Anime4KShaders.bicubic = function (precision) {
 varying vec2 v_texCoord;
 uniform sampler2D u_texture;
 uniform vec2 u_texSize;
+uniform float u_sharpen;
+uniform float u_sharpen;
 
 // Mitchell-Netravali cubic kernel
 float mitchell(float x) {
@@ -85,7 +87,8 @@ void main() {
     vec3 w = texture2D(u_texture, v_texCoord + vec2(-px.x, 0.0)).rgb;
     
     vec3 blur = (n + s + e + w) * 0.25;
-    result = result + (c - blur) * 0.15;
+    float sharpStrength = 0.15 * (1.0 + u_sharpen);
+    result = result + (c - blur) * sharpStrength;
     
     gl_FragColor = vec4(clamp(result, 0.0, 1.0), 1.0);
 }`;

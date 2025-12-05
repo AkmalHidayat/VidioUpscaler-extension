@@ -1,5 +1,65 @@
 # Anime4K Web Upscaler - Release Log
 
+## Version 2.2.1 (2025-12-05)
+
+### Fixed
+
+- **Toggle Pause Bug** - Fixed issue where toggling the upscaler off caused a "frozen" image. It now cleanly hides the overlay.
+- **Comparison Freeze** - Fixed comparison mode freezing when toggled.
+
+### Added
+
+- **8K Support** - Added **8K UHD (7680x4320)** resolution option.
+
+### Changed
+
+- **Settings Refresh** - "Apply" button now always reloads the page to prevent any glitches and ensure a clean state.
+
+---
+
+## Version 2.2.0 (2025-12-05)
+
+### Added
+
+- **Sharpening Control** - New slider from -100% (softer) to +100% (sharper). default is 0%.
+- **Render Delay Metrics** - Check "Show Render Delay" to see how long each frame takes to process (in ms).
+- **Custom Resolution** - Choose "Custom Scale" to set any multiplier (e.g., 1.5x, 3.0x).
+- **Instant Apply** - Changing Sharpening or Resolution no longer requires a page reload!
+
+---
+
+## Version 2.1.7 (2025-12-05)
+
+### Fixed
+
+- **Precise Geometry Matching** - Now syncs overlay size/position with video exactly
+- Instead of relying on `100%` width/height (which can fail if container is different size), the upscaler now mimics the exact `offsetLeft`, `offsetTop`, `width`, and `height` of the video element
+- Updates these values every frame to handle player resizing or layout changes
+
+---
+
+## Version 2.1.6 (2025-12-05)
+
+### Fixed
+
+- **Final Visibility Fix** - Set overlay Z-index to maximum
+- Now using `z-index: 2147483640` inside the video container
+- This forces the upscaler to be **always on top of the video**, but because it's inside the video container, it correctly stays **behind the player controls**
+- Best of both worlds: Visible effects + Usable controls
+
+---
+
+## Version 2.1.5 (2025-12-05)
+
+### Fixed
+
+- **Visibility & Controls Balance** - Fine-tuned stacking order
+- Increased Z-index to 10 to ensure upscaler stays above the video
+- Inserted layer immediately after the video element to maintain correct hierarchy
+- This solves the issue where the upscaler disappeared for some users while keeping controls accessible
+
+---
+
 ## Version 2.1.4 (2025-12-05)
 
 ### Fixed

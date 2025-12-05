@@ -9,6 +9,8 @@ window.Anime4KShaders.anime4k_v41_hq = function (precision) {
 varying vec2 v_texCoord;
 uniform sampler2D u_texture;
 uniform vec2 u_texSize;
+uniform float u_sharpen;
+uniform float u_sharpen;
 
 float getLuma(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
 
@@ -95,9 +97,10 @@ void main() {
         result = result + detail * 0.25;
     }
     
-    // Pass 4: Final unsharp mask
+    // Pass 4: Final unsharp mask with adjustable strength
     vec3 blur = (n + s + e + w) * 0.25;
-    result = result + (result - blur) * 0.2;
+    float sharpStrength = 0.2 * (1.0 + u_sharpen);
+    result = result + (result - blur) * sharpStrength;
     
     gl_FragColor = vec4(clamp(result, 0.0, 1.0), 1.0);
 }`;

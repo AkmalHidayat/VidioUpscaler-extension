@@ -8,6 +8,7 @@ window.Anime4KShaders.realsr = function (precision) {
 varying vec2 v_texCoord;
 uniform sampler2D u_texture;
 uniform vec2 u_texSize;
+uniform float u_sharpen;
 
 float getLuma(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
 
@@ -36,10 +37,11 @@ void main() {
     vec3 avg = (n + s + e + w + ne + nw + se + sw) / 8.0;
     vec3 detail = c - avg;
     
-    // Enhance detail on edges, smooth flat areas
+    // Enhance detail on edges with adjustable strength
+    float detailStrength = clamp(1.5 - edge * 2.0, 0.5, 1.5) * (1.0 + u_sharpen);
     vec3 result = c;
     if (edge > 0.1) {
-        result = c + detail * clamp(1.5 - edge * 2.0, 0.5, 1.5);
+        result = c + detail * detailStrength;
     } else {
         result = mix(c, avg, clamp(0.3 - edge, 0.0, 0.2));
     }

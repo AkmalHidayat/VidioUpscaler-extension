@@ -9,6 +9,7 @@ window.Anime4KShaders.fsr = function (precision) {
 varying vec2 v_texCoord;
 uniform sampler2D u_texture;
 uniform vec2 u_texSize;
+uniform float u_sharpen;
 
 #define FSR_SHARPNESS 0.8
 

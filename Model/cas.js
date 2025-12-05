@@ -8,6 +8,7 @@ window.Anime4KShaders.cas = function (precision) {
 varying vec2 v_texCoord;
 uniform sampler2D u_texture;
 uniform vec2 u_texSize;
+uniform float u_sharpen;
 
 float getLuma(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
 
@@ -32,7 +33,7 @@ void main() {
     // Contrast adaptive strength
     vec3 contrast = maxC - minC;
     float avgContrast = (contrast.r + contrast.g + contrast.b) / 3.0;
-    float sharpAmount = 0.5 * (1.0 - avgContrast * 0.5);
+    float sharpAmount = 0.5 * (1.0 - avgContrast * 0.5) * (1.0 + u_sharpen);
     
     // Apply sharpening
     vec3 result = c + highPass * sharpAmount;

@@ -8,6 +8,7 @@ window.Anime4KShaders.anime4k_v41_fast = function (precision) {
 varying vec2 v_texCoord;
 uniform sampler2D u_texture;
 uniform vec2 u_texSize;
+uniform float u_sharpen;
 
 float getLuma(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
 
@@ -54,9 +55,10 @@ void main() {
         }
     }
     
-    // Light sharpening
+    // Light sharpening with adjustable strength
     vec3 blur = (n + s + e + w) * 0.25;
-    result = result + (result - blur) * 0.15;
+    float sharpStrength = 0.15 * (1.0 + u_sharpen);
+    result = result + (result - blur) * sharpStrength;
     
     gl_FragColor = vec4(clamp(result, 0.0, 1.0), 1.0);
 }`;
