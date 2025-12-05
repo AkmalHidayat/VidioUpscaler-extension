@@ -161,7 +161,7 @@
         // Create wrapper - position relative to video parent
         const wrapper = document.createElement('div');
         wrapper.className = 'anime4k-wrapper';
-        wrapper.style.cssText = 'position:absolute;z-index:2147483640;pointer-events:none;overflow:hidden;transform-origin:0 0;';
+        wrapper.style.cssText = 'position:absolute;pointer-events:none;overflow:hidden;transform-origin:0 0;';
 
         // Match video position within parent
         wrapper.style.top = video.offsetTop + 'px';
@@ -300,7 +300,8 @@
 
         if (config.showLabels) {
             const label = document.createElement('div');
-            label.style.cssText = 'position:absolute;top:10px;left:10px;background:linear-gradient(135deg,#4ade80,#22c55e);color:#000;padding:8px 12px;border-radius:8px;font:bold 12px system-ui;z-index:100;pointer-events:none;';
+            // Centered top, slightly transparent green gradient
+            label.style.cssText = 'position:absolute;top:15px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,rgba(74,222,128,0.85),rgba(34,197,94,0.85));color:#000;padding:8px 12px;border-radius:8px;font:bold 12px system-ui;z-index:100;pointer-events:none;backdrop-filter:blur(4px);text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.1);';
             label.innerHTML = `✨ ${modelNames[config.model] || config.model}<br><span style="opacity:0.7">${outW}×${outH}</span>`;
             wrapper.appendChild(label);
         }
@@ -308,7 +309,8 @@
         let fpsLabel = null;
         if (config.showFps) {
             fpsLabel = document.createElement('div');
-            fpsLabel.style.cssText = 'position:absolute;top:55px;left:10px;background:rgba(0,0,0,0.7);color:#4ade80;padding:5px 10px;border-radius:6px;font:bold 11px monospace;z-index:100;pointer-events:none;';
+            // Centered top, below the label
+            fpsLabel.style.cssText = 'position:absolute;top:65px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);color:#4ade80;padding:4px 10px;border-radius:6px;font:bold 11px monospace;z-index:99;pointer-events:none;backdrop-filter:blur(2px);';
             fpsLabel.textContent = 'FPS: --';
             wrapper.appendChild(fpsLabel);
         }
@@ -533,10 +535,16 @@
                     }
                 } catch (e) {
                     console.error('[Anime4K] Render error:', e);
+                    // If CORS error, stop rendering this video to prevent spam
+                    if (e.name === 'SecurityError') {
+                        console.warn('[Anime4K] Stopped rendering due to CORS restriction on this video.');
+                        running = false;
+                        wrapper.remove();
+                    }
                 }
             }
 
-            requestAnimationFrame(render);
+            if (running) requestAnimationFrame(render);
         }
 
         requestAnimationFrame(render);
@@ -566,7 +574,7 @@
         const btn = document.createElement('div');
         btn.id = 'anime4k-toggle';
         btn.innerHTML = '✨ Anime4K ON';
-        btn.style.cssText = 'position:fixed;top:20px;right:20px;z-index:2147483647;padding:12px 20px;background:#111;border:2px solid #4ade80;border-radius:12px;color:#4ade80;font:bold 14px system-ui;cursor:pointer;user-select:none;';
+        btn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:2147483647;padding:12px 20px;background:#111;border:2px solid #4ade80;border-radius:12px;color:#4ade80;font:bold 14px system-ui;cursor:pointer;user-select:none;';
 
         btn.onclick = () => {
             enabled = !enabled;
@@ -579,14 +587,14 @@
         // Settings button
         const settingsBtn = document.createElement('div');
         settingsBtn.innerHTML = '⚙️';
-        settingsBtn.style.cssText = 'position:fixed;top:75px;right:20px;z-index:2147483647;width:44px;height:44px;background:#111;border:2px solid #555;border-radius:12px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;';
+        settingsBtn.style.cssText = 'position:fixed;bottom:75px;right:20px;z-index:2147483647;width:44px;height:44px;background:#111;border:2px solid #555;border-radius:12px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;';
         settingsBtn.onclick = toggleSettings;
         document.body.appendChild(settingsBtn);
 
         // Settings panel
         const panel = document.createElement('div');
         panel.id = 'anime4k-settings';
-        panel.style.cssText = 'position:fixed;top:130px;right:20px;z-index:2147483647;width:280px;background:#111;border:1px solid #333;border-radius:14px;padding:16px;font-family:system-ui;color:#fff;display:none;';
+        panel.style.cssText = 'position:fixed;bottom:130px;right:20px;z-index:2147483647;width:280px;background:#111;border:1px solid #333;border-radius:14px;padding:16px;font-family:system-ui;color:#fff;display:none;';
 
         panel.innerHTML = `
             <div style="font-size:16px;font-weight:bold;color:#4ade80;margin-bottom:14px;">⚡ Anime4K v2.2.0</div>

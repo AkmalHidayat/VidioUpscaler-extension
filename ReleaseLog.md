@@ -1,10 +1,23 @@
 # Anime4K Web Upscaler - Release Log
 
+## Version 2.3.0 (2025-12-06)
+
+### Added
+
+- **Extension Popup UI** - Moved all settings to the extension popup! Click the extension icon to change model, resolution, and more.
+- **Smart CORS Handling** - Added fallback logic for videos with cross-origin restrictions to prevent errors.
+
+### Changed
+
+- **Cleaner Interface** - Removed floating buttons and panels from the video player (except when "Compare Mode" is active).
+
+---
+
 ## Version 2.2.5 (2025-12-05)
 
-### Improved
+### Fixed
 
-- **UI Positioning** - Moved controls (Toggle/Settings) to the **Top-Right** corner to avoid conflict with media player control bars (play/pause, volume, etc) which are typically at the bottom.
+- **Player Controls Visibility** - Fixed issue where the upscaler overlay was covering playback controls on some websites. Now intelligently matches the video's stacking order.
 
 ---
 
