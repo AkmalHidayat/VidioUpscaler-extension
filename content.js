@@ -537,6 +537,7 @@
                     // Start by checking specific error types
                     if (e.name === 'SecurityError') {
                         console.warn('[Anime4K] Stopped rendering due to CORS restriction (SecurityError).');
+                        showToast('Sorry This Media/Server Is Not Supported', true);
                         running = false;
                         wrapper.remove();
                     } else {
@@ -648,5 +649,42 @@
             });
         });
     }).observe(document.body, { childList: true, subtree: true });
+
+    // ==================== UX HELPERS ====================
+    function showToast(message, isError = false) {
+        const id = 'a4k-toast';
+        let toast = document.getElementById(id);
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = id;
+            toast.style.cssText = 'position:fixed;top:20px;right:20px;z-index:2147483647;padding:12px 20px;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);border:1px solid #333;border-radius:12px;color:#fff;font-family:system-ui;font-size:14px;font-weight:500;transition:opacity 0.3s, transform 0.3s;pointer-events:none;opacity:0;transform:translateY(-10px);box-shadow:0 8px 32px rgba(0,0,0,0.3);';
+            document.body.appendChild(toast);
+        }
+
+        toast.textContent = message;
+        toast.style.borderColor = isError ? '#f87171' : '#4ade80';
+        toast.style.color = isError ? '#f87171' : '#fff';
+
+        // Reset animation
+        requestAnimationFrame(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0)';
+        });
+
+        clearTimeout(toast.timer);
+        toast.timer = setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-10px)';
+        }, 3000);
+    }
+
+    // Keyboard Shortcuts
+    document.addEventListener('keydown', (e) => {
+        // Alt+U: Toggle Upscaler
+        if (e.altKey && e.key.toLowerCase() === 'u') {
+            enabled = !enabled;
+            showToast(enabled ? '✨ Anime4K ENABLED' : '○ Anime4K DISABLED');
+        }
+    });
 
 })();

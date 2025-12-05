@@ -1,5 +1,13 @@
 # Anime4K Web Upscaler - Release Log
 
+## Version 2.4.1 (2025-12-06)
+
+### Added
+
+- **Keyboard Shortcut** - Added `Alt+U` to quickly toggle the upscaler ON/OFF.
+- **Error Notifications** - Added a visible "Not Supported" toast message if the upscaler fails due to security restrictions.
+- **Popup Footer** - Displaying shortcut information in the settings menu.
+
 ## Version 2.4.0 (2025-12-06)
 
 ### Added
