@@ -720,7 +720,25 @@
 
     // ==================== INIT ====================
     function scanVideos() {
-        document.querySelectorAll('video').forEach(video => {
+        const videos = [];
+
+        // Recursive function to find videos including inside Shadow DOM
+        function findVideosInRoot(root) {
+            if (!root) return;
+            // Add videos from current root
+            root.querySelectorAll('video').forEach(v => videos.push(v));
+
+            // Check all elements for shadow roots
+            root.querySelectorAll('*').forEach(el => {
+                if (el.shadowRoot) {
+                    findVideosInRoot(el.shadowRoot);
+                }
+            });
+        }
+
+        findVideosInRoot(document);
+
+        videos.forEach(video => {
             if (!processedVideos.has(video) && video.videoWidth > 0) {
                 processVideo(video);
             }

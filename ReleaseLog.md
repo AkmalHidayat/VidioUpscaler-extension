@@ -1,5 +1,14 @@
 # Anime4K Web Upscaler - Release Log
 
+## Version 2.2.4 (2025-12-05)
+
+### Added
+
+- **Universal Website Support** - Extension now works on **any website**, including those using embedded players (IFrames) and Shadow DOM (e.g. strict YouTube layouts, custom web players).
+- **Deep Scanning** - Improved video detection algorithm to find video elements hidden deep within the page structure.
+
+---
+
 ## Version 2.2.3 (2025-12-05)
 
 ### Improved
