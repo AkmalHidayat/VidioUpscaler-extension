@@ -534,12 +534,14 @@
                         lastFpsTime = now;
                     }
                 } catch (e) {
-                    console.error('[Anime4K] Render error:', e);
-                    // If CORS error, stop rendering this video to prevent spam
+                    // Start by checking specific error types
                     if (e.name === 'SecurityError') {
-                        console.warn('[Anime4K] Stopped rendering due to CORS restriction on this video.');
+                        console.warn('[Anime4K] Stopped rendering due to CORS restriction (SecurityError).');
                         running = false;
                         wrapper.remove();
+                    } else {
+                        // Only log actual unexpected errors
+                        console.error('[Anime4K] Render error:', e);
                     }
                 }
             }
@@ -562,169 +564,25 @@
         });
 
         console.log('[Anime4K] ✓ Video processed successfully');
-        createUI();
     }
 
-    // ==================== UI ====================
-    function createUI() {
-        if (uiReady) return;
-        uiReady = true;
+    // ==================== CONFIG SYNC ====================
+    chrome.storage.onChanged.addListener((changes, namespace) => {
+        if (namespace === 'sync') {
+            let limitReload = false;
+            for (const [key, { newValue }] of Object.entries(changes)) {
+                config[key] = newValue;
+                if (key === 'model' || key === 'resolution' || key === 'customScale') {
+                    limitReload = true;
+                }
+            }
 
-        // Toggle button
-        const btn = document.createElement('div');
-        btn.id = 'anime4k-toggle';
-        btn.innerHTML = '✨ Anime4K ON';
-        btn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:2147483647;padding:12px 20px;background:#111;border:2px solid #4ade80;border-radius:12px;color:#4ade80;font:bold 14px system-ui;cursor:pointer;user-select:none;';
-
-        btn.onclick = () => {
-            enabled = !enabled;
-            btn.innerHTML = enabled ? '✨ Anime4K ON' : '○ Anime4K OFF';
-            btn.style.color = enabled ? '#4ade80' : '#f87171';
-            btn.style.borderColor = enabled ? '#4ade80' : '#f87171';
-        };
-        document.body.appendChild(btn);
-
-        // Settings button
-        const settingsBtn = document.createElement('div');
-        settingsBtn.innerHTML = '⚙️';
-        settingsBtn.style.cssText = 'position:fixed;bottom:75px;right:20px;z-index:2147483647;width:44px;height:44px;background:#111;border:2px solid #555;border-radius:12px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;';
-        settingsBtn.onclick = toggleSettings;
-        document.body.appendChild(settingsBtn);
-
-        // Settings panel
-        const panel = document.createElement('div');
-        panel.id = 'anime4k-settings';
-        panel.style.cssText = 'position:fixed;bottom:130px;right:20px;z-index:2147483647;width:280px;background:#111;border:1px solid #333;border-radius:14px;padding:16px;font-family:system-ui;color:#fff;display:none;';
-
-        panel.innerHTML = `
-            <div style="font-size:16px;font-weight:bold;color:#4ade80;margin-bottom:14px;">⚡ Anime4K v2.2.0</div>
-            
-            <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">MODEL</label>
-            <select id="a4k-model" style="width:100%;padding:8px;margin-bottom:12px;background:#222;border:1px solid #444;border-radius:8px;color:#fff;">
-                <option value="debug">🔧 Debug (Grayscale)</option>
-                <option value="anime4k_v41_fast">Anime4K Fast</option>
-                <option value="anime4k_v41_hq">Anime4K HQ</option>
-                <option value="fsr">FSR 1.0</option>
-                <option value="xbrz">xBRZ</option>
-                <option value="cas">CAS</option>
-                <option value="bicubic">Bicubic</option>
-                <option value="realsr">Real-ESRGAN</option>
-            </select>
-            
-            <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">RESOLUTION</label>
-            <div style="display:flex;gap:8px;margin-bottom:12px;">
-                <select id="a4k-res" style="flex:1;padding:8px;background:#222;border:1px solid #444;border-radius:8px;color:#fff;">
-                    <option value="custom">Custom Scale</option>
-                    <option value="2x">2x (Auto)</option>
-                    <option value="4x">4x</option>
-                    <option value="8x">8x</option>
-                    <option value="1080p">1080p FHD</option>
-                    <option value="2k">2K QHD</option>
-                    <option value="4k">4K UHD</option>
-                    <option value="8k">8K UHD</option>
-                </select>
-                <input type="number" id="a4k-scale" step="0.1" min="0.1" max="10" value="2.0" style="width:60px;padding:8px;background:#222;border:1px solid #444;border-radius:8px;color:#fff;display:none;">
-            </div>
-
-            <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">SHARPENING: <span id="a4k-sharp-val">0%</span></label>
-            <input type="range" id="a4k-sharp" min="-1" max="1" step="0.1" style="width:100%;margin-bottom:12px;cursor:pointer;">
-            
-            <div style="background:#1a1a1a;border-radius:8px;padding:10px;margin-bottom:12px;">
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px;">
-                    <input type="checkbox" id="a4k-compare">
-                    <span>🔀 Compare Mode</span>
-                </label>
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px;">
-                    <input type="checkbox" id="a4k-fps">
-                    <span>📊 Show FPS</span>
-                </label>
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px;">
-                    <input type="checkbox" id="a4k-delay">
-                    <span>⏱️ Show Render Delay</span>
-                </label>
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                    <input type="checkbox" id="a4k-labels">
-                    <span>🏷️ Show info Overlays</span>
-                </label>
-            </div>
-            
-            <div style="font-size:10px;color:#666;text-align:center;margin-bottom:10px;">Alt+A: Toggle | Alt+S: Settings</div>
-            
-            <button id="a4k-apply" style="width:100%;padding:12px;background:#4ade80;border:none;border-radius:8px;color:#000;font-weight:bold;cursor:pointer;">
-                ✓ Apply Settings
-            </button>
-        `;
-        document.body.appendChild(panel);
-
-        // Control References
-        const resSlct = document.getElementById('a4k-res');
-        const scaleInp = document.getElementById('a4k-scale');
-        const sharpInp = document.getElementById('a4k-sharp');
-        const sharpVal = document.getElementById('a4k-sharp-val');
-
-        // Logic to show/hide scale input
-        resSlct.onchange = () => {
-            scaleInp.style.display = resSlct.value === 'custom' ? 'block' : 'none';
-        };
-
-        // Live slider update
-        sharpInp.oninput = () => {
-            sharpVal.textContent = Math.round(sharpInp.value * 100) + '%';
-        };
-
-        // Set initial values from config
-        document.getElementById('a4k-model').value = config.model;
-        resSlct.value = config.resolution;
-        scaleInp.value = config.customScale || 2.0;
-        scaleInp.style.display = config.resolution === 'custom' ? 'block' : 'none';
-        sharpInp.value = config.sharpen || 0.0;
-        sharpVal.textContent = Math.round((config.sharpen || 0.0) * 100) + '%';
-        document.getElementById('a4k-compare').checked = config.compare;
-        document.getElementById('a4k-fps').checked = config.showFps;
-        document.getElementById('a4k-delay').checked = config.showRenderTime;
-        document.getElementById('a4k-labels').checked = config.showLabels;
-
-        document.getElementById('a4k-apply').onclick = () => {
-            const oldModel = config.model;
-            // Update config
-            config.model = document.getElementById('a4k-model').value;
-            config.resolution = resSlct.value;
-            config.customScale = parseFloat(scaleInp.value);
-            config.sharpen = parseFloat(sharpInp.value);
-            config.compare = document.getElementById('a4k-compare').checked;
-            config.showFps = document.getElementById('a4k-fps').checked;
-            config.showRenderTime = document.getElementById('a4k-delay').checked;
-            config.showLabels = document.getElementById('a4k-labels').checked;
-
-            saveConfig();
-            location.reload();
-        };
-
-        function toggleSettings() {
-            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-        }
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.altKey && e.key.toLowerCase() === 'a') btn.click();
-            if (e.altKey && e.key.toLowerCase() === 's') toggleSettings();
-        });
-
-        // Hide UI in fullscreen
-        function onFullscreenChange() {
-            const isFs = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
-            if (isFs) {
-                btn.style.display = 'none';
-                settingsBtn.style.display = 'none';
-                panel.style.display = 'none';
-            } else {
-                btn.style.display = 'block';
-                settingsBtn.style.display = 'flex';
+            // For heavy changes, we might need to re-process (reload page is safest for model swap)
+            if (limitReload) {
+                location.reload();
             }
         }
-        document.addEventListener('fullscreenchange', onFullscreenChange);
-        document.addEventListener('webkitfullscreenchange', onFullscreenChange);
-    }
+    });
 
     // ==================== INIT ====================
     function scanVideos() {
@@ -747,6 +605,25 @@
         findVideosInRoot(document);
 
         videos.forEach(video => {
+            // ==================== CORS PATCH ====================
+            // Force anonymous mode for declarativeNetRequest rule
+            if (!video.hasAttribute('data-a4k-patched')) {
+                video.setAttribute('data-a4k-patched', 'true');
+
+                if (!video.crossOrigin) {
+                    video.crossOrigin = 'anonymous';
+                    // Re-assign src to force new request with proper headers if playback hasn't started deeply
+                    if (video.src && !video.src.startsWith('blob:') && !video.src.startsWith('data:')) {
+                        const t = video.currentTime;
+                        const p = !video.paused;
+                        video.src = video.src;
+                        video.currentTime = t;
+                        if (p) video.play().catch(() => { });
+                    }
+                }
+            }
+            // ====================================================
+
             if (!processedVideos.has(video) && video.videoWidth > 0) {
                 processVideo(video);
             }

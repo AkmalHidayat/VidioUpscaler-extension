@@ -1,11 +1,30 @@
 # Anime4K Web Upscaler - Release Log
 
+## Version 2.4.0 (2025-12-06)
+
+### Added
+
+- **Global CORS Bypass** - Implemented a "Nuclear" solution to bypass video security restrictions. The extension now forces the browser to allow video processing on almost all websites (including restricted ones like NontonAnimeID).
+
+## Version 2.3.2 (2025-12-06)
+
+### Fixed
+
+- **Legacy UI Removal** - Completely removed the old in-page floating buttons that were persisting on some sites. The extension is now fully controlled via the browser popup.
+
+## Version 2.3.1 (2025-12-06)
+
+### Fixed
+
+- **CORS Error Logging** - Fixed an issue where "SecurityError" was still being logged as a critical error in the console. It now correctly warns silently.
+
 ## Version 2.3.0 (2025-12-06)
 
 ### Added
 
 - **Extension Popup UI** - Moved all settings to the extension popup! Click the extension icon to change model, resolution, and more.
 - **Smart CORS Handling** - Added fallback logic for videos with cross-origin restrictions to prevent errors.
+- **Improved Info Badges** - Moved status overlay to top-center with a modern, semi-transparent glass effect.
 
 ### Changed
 
