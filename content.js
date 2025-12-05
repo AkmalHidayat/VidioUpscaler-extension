@@ -566,7 +566,7 @@
         const btn = document.createElement('div');
         btn.id = 'anime4k-toggle';
         btn.innerHTML = '✨ Anime4K ON';
-        btn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:2147483647;padding:12px 20px;background:#111;border:2px solid #4ade80;border-radius:12px;color:#4ade80;font:bold 14px system-ui;cursor:pointer;user-select:none;';
+        btn.style.cssText = 'position:fixed;top:20px;right:20px;z-index:2147483647;padding:12px 20px;background:#111;border:2px solid #4ade80;border-radius:12px;color:#4ade80;font:bold 14px system-ui;cursor:pointer;user-select:none;';
 
         btn.onclick = () => {
             enabled = !enabled;
@@ -579,14 +579,14 @@
         // Settings button
         const settingsBtn = document.createElement('div');
         settingsBtn.innerHTML = '⚙️';
-        settingsBtn.style.cssText = 'position:fixed;bottom:75px;right:20px;z-index:2147483647;width:44px;height:44px;background:#111;border:2px solid #555;border-radius:12px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;';
+        settingsBtn.style.cssText = 'position:fixed;top:75px;right:20px;z-index:2147483647;width:44px;height:44px;background:#111;border:2px solid #555;border-radius:12px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;';
         settingsBtn.onclick = toggleSettings;
         document.body.appendChild(settingsBtn);
 
         // Settings panel
         const panel = document.createElement('div');
         panel.id = 'anime4k-settings';
-        panel.style.cssText = 'position:fixed;bottom:130px;right:20px;z-index:2147483647;width:280px;background:#111;border:1px solid #333;border-radius:14px;padding:16px;font-family:system-ui;color:#fff;display:none;';
+        panel.style.cssText = 'position:fixed;top:130px;right:20px;z-index:2147483647;width:280px;background:#111;border:1px solid #333;border-radius:14px;padding:16px;font-family:system-ui;color:#fff;display:none;';
 
         panel.innerHTML = `
             <div style="font-size:16px;font-weight:bold;color:#4ade80;margin-bottom:14px;">⚡ Anime4K v2.2.0</div>

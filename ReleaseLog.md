@@ -1,5 +1,13 @@
 # Anime4K Web Upscaler - Release Log
 
+## Version 2.2.5 (2025-12-05)
+
+### Improved
+
+- **UI Positioning** - Moved controls (Toggle/Settings) to the **Top-Right** corner to avoid conflict with media player control bars (play/pause, volume, etc) which are typically at the bottom.
+
+---
+
 ## Version 2.2.4 (2025-12-05)
 
 ### Added
