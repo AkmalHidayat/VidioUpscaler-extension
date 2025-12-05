@@ -1,5 +1,13 @@
 # Anime4K Web Upscaler - Release Log
 
+## Version 2.2.2 (2025-12-05)
+
+### Fixed
+
+- **Shader Compilation Error** - Fixed a critical issue where "u_sharpen" was redefined in some shaders, causing them to fail and fallback to the basic shader.
+
+---
+
 ## Version 2.2.1 (2025-12-05)
 
 ### Fixed
