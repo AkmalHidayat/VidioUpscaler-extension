@@ -15,7 +15,8 @@
         resolution: '2x',
         compare: false,
         sliderPos: 50,
-        showFps: true
+        showFps: true,
+        showLabels: true
     };
 
     // Load config from storage
@@ -45,20 +46,23 @@
 
     function getFragmentShader() {
         // Check if external shaders loaded
+        console.log('[Anime4K] Available shaders:', Object.keys(window.Anime4KShaders || {}));
+        console.log('[Anime4K] Looking for model:', config.model);
+
         if (window.Anime4KShaders && window.Anime4KShaders[config.model]) {
-            console.log('[Anime4K] Using external shader:', config.model);
-            return window.Anime4KShaders[config.model]('highp');
+            console.log('[Anime4K] ✓ Using external shader:', config.model);
+            const shader = window.Anime4KShaders[config.model]('highp');
+            console.log('[Anime4K] Shader length:', shader.length);
+            return shader;
         }
 
-        // Built-in fallback shaders
-        console.log('[Anime4K] Using built-in shader');
+        // Built-in fallback with STRONG sharpening
+        console.log('[Anime4K] ⚠ Using built-in fallback shader (external not found)');
         return `
             precision highp float;
             varying vec2 v_texCoord;
             uniform sampler2D u_texture;
             uniform vec2 u_texSize;
-            
-            float getLuma(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
             
             void main() {
                 vec2 px = 1.0 / u_texSize;
@@ -68,14 +72,11 @@
                 vec3 e = texture2D(u_texture, v_texCoord + vec2(px.x, 0.0)).rgb;
                 vec3 w = texture2D(u_texture, v_texCoord + vec2(-px.x, 0.0)).rgb;
                 
-                float edge = max(abs(getLuma(n) - getLuma(s)), abs(getLuma(e) - getLuma(w)));
-                vec3 result = c;
+                // Strong unsharp mask
+                vec3 blur = (n + s + e + w) * 0.25;
+                vec3 sharp = c + (c - blur) * 0.8;
                 
-                if (edge > 0.05) {
-                    result = c * 1.15 - (n + s + e + w) * 0.0375;
-                }
-                
-                gl_FragColor = vec4(clamp(result, 0.0, 1.0), 1.0);
+                gl_FragColor = vec4(clamp(sharp, 0.0, 1.0), 1.0);
             }
         `;
     }
@@ -145,10 +146,14 @@
         const [outW, outH] = getTargetResolution(video.videoWidth, video.videoHeight);
         console.log('[Anime4K] Output resolution:', outW, 'x', outH);
 
-        // Create wrapper
+        // Get video's actual position and size
+
+
+        // Create wrapper - position it exactly over the video
+        // Create wrapper - position relative to video parent
         const wrapper = document.createElement('div');
         wrapper.className = 'anime4k-wrapper';
-        wrapper.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:10;pointer-events:none;';
+        wrapper.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none;overflow:hidden;';
 
         // Ensure parent has position
         if (getComputedStyle(parent).position === 'static') {
@@ -160,7 +165,7 @@
         const canvas = document.createElement('canvas');
         canvas.width = outW;
         canvas.height = outH;
-        canvas.style.cssText = 'width:100%;height:100%;display:block;';
+        canvas.style.cssText = 'width:100%;height:100%;display:block;background:#000;';
         wrapper.appendChild(canvas);
 
         // Get WebGL context
@@ -178,11 +183,12 @@
             return;
         }
 
+
         // Create program with fallback
         let program = createProgram(gl, VERTEX_SHADER, getFragmentShader());
 
         if (!program) {
-            console.warn('[Anime4K] Using basic fallback shader');
+            console.warn('[Anime4K] External shader failed, using basic fallback');
             program = createProgram(gl, VERTEX_SHADER, `
                 precision mediump float;
                 varying vec2 v_texCoord;
@@ -199,7 +205,11 @@
 
         gl.useProgram(program);
 
-        // Setup geometry - full screen quad
+        // Get attribute locations
+        const posLoc = gl.getAttribLocation(program, 'a_position');
+        const texLoc = gl.getAttribLocation(program, 'a_texCoord');
+
+        // Create and setup position buffer
         const posBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
@@ -209,11 +219,7 @@
             1, 1
         ]), gl.STATIC_DRAW);
 
-        const posLoc = gl.getAttribLocation(program, 'a_position');
-        gl.enableVertexAttribArray(posLoc);
-        gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
-
-        // Texture coordinates (flipped Y for video)
+        // Create and setup texture coordinate buffer
         const texBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
@@ -222,10 +228,6 @@
             0, 0,
             1, 0
         ]), gl.STATIC_DRAW);
-
-        const texLoc = gl.getAttribLocation(program, 'a_texCoord');
-        gl.enableVertexAttribArray(texLoc);
-        gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 0, 0);
 
         // Create texture
         const texture = gl.createTexture();
@@ -244,8 +246,25 @@
             gl.uniform2f(texSizeLoc, video.videoWidth, video.videoHeight);
         }
 
+        // Function to setup attributes before drawing
+        function setupAttributes() {
+            // Bind position buffer and set attribute
+            gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+            gl.enableVertexAttribArray(posLoc);
+            gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+            // Bind texture coord buffer and set attribute
+            gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
+            gl.enableVertexAttribArray(texLoc);
+            gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 0, 0);
+        }
+
+        // Initial setup
+        setupAttributes();
+
         // Create UI labels
         const modelNames = {
+            debug: '🔧 Debug (Grayscale)',
             anime4k_v41_fast: 'Anime4K Fast',
             anime4k_v41_hq: 'Anime4K HQ',
             fsr: 'FSR 1.0',
@@ -255,10 +274,12 @@
             realsr: 'Real-ESRGAN'
         };
 
-        const label = document.createElement('div');
-        label.style.cssText = 'position:absolute;top:10px;left:10px;background:linear-gradient(135deg,#4ade80,#22c55e);color:#000;padding:8px 12px;border-radius:8px;font:bold 12px system-ui;z-index:100;pointer-events:none;';
-        label.innerHTML = `✨ ${modelNames[config.model] || config.model}<br><span style="opacity:0.7">${outW}×${outH}</span>`;
-        wrapper.appendChild(label);
+        if (config.showLabels) {
+            const label = document.createElement('div');
+            label.style.cssText = 'position:absolute;top:10px;left:10px;background:linear-gradient(135deg,#4ade80,#22c55e);color:#000;padding:8px 12px;border-radius:8px;font:bold 12px system-ui;z-index:100;pointer-events:none;';
+            label.innerHTML = `✨ ${modelNames[config.model] || config.model}<br><span style="opacity:0.7">${outW}×${outH}</span>`;
+            wrapper.appendChild(label);
+        }
 
         let fpsLabel = null;
         if (config.showFps) {
@@ -268,37 +289,128 @@
             wrapper.appendChild(fpsLabel);
         }
 
+
         // Comparison slider
         if (config.compare) {
-            const slider = document.createElement('div');
-            slider.style.cssText = `position:absolute;top:0;left:${config.sliderPos}%;width:4px;height:100%;background:#4ade80;z-index:200;cursor:ew-resize;pointer-events:auto;transform:translateX(-50%);`;
+            // Slider container
+            const sliderContainer = document.createElement('div');
+            sliderContainer.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:200;pointer-events:none;';
+            wrapper.appendChild(sliderContainer);
 
+            // Slider line
+            const slider = document.createElement('div');
+            slider.style.cssText = `
+                position:absolute;
+                top:0;
+                left:${config.sliderPos}%;
+                width:4px;
+                height:100%;
+                background:linear-gradient(180deg, #4ade80 0%, #22c55e 50%, #4ade80 100%);
+                box-shadow: 0 0 10px rgba(74,222,128,0.8), 0 0 20px rgba(74,222,128,0.4);
+                z-index:201;
+                cursor:ew-resize;
+                pointer-events:auto;
+                transform:translateX(-50%);
+            `;
+
+            // Slider handle (circle)
             const handle = document.createElement('div');
-            handle.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:36px;height:36px;background:#4ade80;border:3px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;';
+            handle.style.cssText = `
+                position:absolute;
+                top:50%;
+                left:50%;
+                transform:translate(-50%,-50%);
+                width:44px;
+                height:44px;
+                background:linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+                border:4px solid #fff;
+                border-radius:50%;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                font-size:20px;
+                color:#fff;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.3), 0 0 15px rgba(74,222,128,0.5);
+                cursor:ew-resize;
+                user-select:none;
+            `;
             handle.textContent = '⟷';
             slider.appendChild(handle);
-            wrapper.appendChild(slider);
+            sliderContainer.appendChild(slider);
 
+            // Arrow indicators at top and bottom
+            const topArrow = document.createElement('div');
+            topArrow.style.cssText = 'position:absolute;top:10px;left:50%;transform:translateX(-50%);color:#fff;font-size:12px;text-shadow:0 1px 3px rgba(0,0,0,0.8);';
+            topArrow.textContent = '▼';
+            slider.appendChild(topArrow);
+
+            const bottomArrow = document.createElement('div');
+            bottomArrow.style.cssText = 'position:absolute;bottom:10px;left:50%;transform:translateX(-50%);color:#fff;font-size:12px;text-shadow:0 1px 3px rgba(0,0,0,0.8);';
+            bottomArrow.textContent = '▲';
+            slider.appendChild(bottomArrow);
+
+            // Set initial clip path
             canvas.style.clipPath = `inset(0 ${100 - config.sliderPos}% 0 0)`;
 
+            // Drag state
             let dragging = false;
-            slider.onmousedown = () => dragging = true;
-            document.addEventListener('mousemove', (e) => {
-                if (!dragging) return;
-                const rect = wrapper.getBoundingClientRect();
-                const pct = Math.max(5, Math.min(95, ((e.clientX - rect.left) / rect.width) * 100));
+
+            function updateSlider(clientX) {
+                const rect = sliderContainer.getBoundingClientRect();
+                const pct = Math.max(5, Math.min(95, ((clientX - rect.left) / rect.width) * 100));
                 config.sliderPos = pct;
                 slider.style.left = pct + '%';
                 canvas.style.clipPath = `inset(0 ${100 - pct}% 0 0)`;
-            });
-            document.addEventListener('mouseup', () => {
-                if (dragging) { dragging = false; saveConfig(); }
+            }
+
+            // Mouse events
+            slider.addEventListener('mousedown', (e) => {
+                dragging = true;
+                e.preventDefault();
             });
 
+            document.addEventListener('mousemove', (e) => {
+                if (!dragging) return;
+                updateSlider(e.clientX);
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (dragging) {
+                    dragging = false;
+                    saveConfig();
+                }
+            });
+
+            // Touch events
+            slider.addEventListener('touchstart', (e) => {
+                dragging = true;
+                e.preventDefault();
+            }, { passive: false });
+
+            document.addEventListener('touchmove', (e) => {
+                if (!dragging) return;
+                if (e.touches.length > 0) {
+                    updateSlider(e.touches[0].clientX);
+                }
+            }, { passive: true });
+
+            document.addEventListener('touchend', () => {
+                if (dragging) {
+                    dragging = false;
+                    saveConfig();
+                }
+            });
+
+            // Labels
+            const leftLabel = document.createElement('div');
+            leftLabel.style.cssText = 'position:absolute;top:10px;left:10px;background:linear-gradient(135deg,#4ade80,#22c55e);color:#000;padding:8px 12px;border-radius:8px;font:bold 12px system-ui;z-index:100;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
+            leftLabel.innerHTML = `✨ Enhanced<br><span style="opacity:0.7">${outW}×${outH}</span>`;
+            sliderContainer.appendChild(leftLabel);
+
             const rightLabel = document.createElement('div');
-            rightLabel.style.cssText = 'position:absolute;top:10px;right:10px;background:#ef4444;color:#fff;padding:8px 12px;border-radius:8px;font:bold 12px system-ui;z-index:100;pointer-events:none;';
+            rightLabel.style.cssText = 'position:absolute;top:10px;right:10px;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;padding:8px 12px;border-radius:8px;font:bold 12px system-ui;z-index:100;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
             rightLabel.innerHTML = `📺 Original<br><span style="opacity:0.7">${video.videoWidth}×${video.videoHeight}</span>`;
-            wrapper.appendChild(rightLabel);
+            sliderContainer.appendChild(rightLabel);
         }
 
         // Render loop
@@ -313,6 +425,8 @@
                 requestAnimationFrame(render);
                 return;
             }
+
+
 
             // Check for resolution change
             if (video.videoWidth !== lastVideoW || video.videoHeight !== lastVideoH) {
@@ -334,10 +448,26 @@
             // Render if video has data
             if (video.readyState >= video.HAVE_CURRENT_DATA) {
                 try {
+                    // Ensure program is active
+                    gl.useProgram(program);
+
+                    // Setup attributes (rebind buffers)
+                    setupAttributes();
+
+                    // Set uniforms every frame
+                    gl.uniform1i(textureLoc, 0);
+                    if (texSizeLoc) {
+                        gl.uniform2f(texSizeLoc, video.videoWidth, video.videoHeight);
+                    }
+
+                    // Upload video frame to texture
                     gl.activeTexture(gl.TEXTURE0);
                     gl.bindTexture(gl.TEXTURE_2D, texture);
                     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
 
+                    // Clear and draw
+                    gl.clearColor(0.0, 0.0, 0.0, 1.0);
+                    gl.clear(gl.COLOR_BUFFER_BIT);
                     gl.viewport(0, 0, canvas.width, canvas.height);
                     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
@@ -407,10 +537,11 @@
         panel.style.cssText = 'position:fixed;bottom:130px;right:20px;z-index:2147483647;width:280px;background:#111;border:1px solid #333;border-radius:14px;padding:16px;font-family:system-ui;color:#fff;display:none;';
 
         panel.innerHTML = `
-            <div style="font-size:16px;font-weight:bold;color:#4ade80;margin-bottom:14px;">⚡ Anime4K v2.0.5</div>
+            <div style="font-size:16px;font-weight:bold;color:#4ade80;margin-bottom:14px;">⚡ Anime4K v2.1.3</div>
             
             <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">MODEL</label>
             <select id="a4k-model" style="width:100%;padding:10px;margin-bottom:12px;background:#222;border:1px solid #444;border-radius:8px;color:#fff;">
+                <option value="debug">🔧 Debug (Grayscale)</option>
                 <option value="anime4k_v41_fast">Anime4K Fast</option>
                 <option value="anime4k_v41_hq">Anime4K HQ</option>
                 <option value="fsr">FSR 1.0</option>
@@ -439,6 +570,10 @@
                     <input type="checkbox" id="a4k-fps">
                     <span>📊 Show FPS</span>
                 </label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px;">
+                    <input type="checkbox" id="a4k-labels">
+                    <span>🏷️ Show info Overlays</span>
+                </label>
             </div>
             
             <div style="font-size:10px;color:#666;text-align:center;margin-bottom:10px;">Alt+A: Toggle | Alt+S: Settings</div>
@@ -454,12 +589,14 @@
         document.getElementById('a4k-res').value = config.resolution;
         document.getElementById('a4k-compare').checked = config.compare;
         document.getElementById('a4k-fps').checked = config.showFps;
+        document.getElementById('a4k-labels').checked = config.showLabels;
 
         document.getElementById('a4k-apply').onclick = () => {
             config.model = document.getElementById('a4k-model').value;
             config.resolution = document.getElementById('a4k-res').value;
             config.compare = document.getElementById('a4k-compare').checked;
             config.showFps = document.getElementById('a4k-fps').checked;
+            config.showLabels = document.getElementById('a4k-labels').checked;
             saveConfig();
             location.reload();
         };
