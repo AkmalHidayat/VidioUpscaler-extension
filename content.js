@@ -534,14 +534,12 @@
                         lastFpsTime = now;
                     }
                 } catch (e) {
-                    // Start by checking specific error types
+                    console.error('[Anime4K] Render error:', e);
+                    // If CORS error, stop rendering this video to prevent spam
                     if (e.name === 'SecurityError') {
-                        console.warn('[Anime4K] Stopped rendering due to CORS restriction (SecurityError).');
+                        console.warn('[Anime4K] Stopped rendering due to CORS restriction on this video.');
                         running = false;
                         wrapper.remove();
-                    } else {
-                        // Only log actual unexpected errors
-                        console.error('[Anime4K] Render error:', e);
                     }
                 }
             }
