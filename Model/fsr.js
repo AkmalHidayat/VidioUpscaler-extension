@@ -75,7 +75,7 @@ void main() {
     float contrast = lmax - lmin;
     
     // Sharpening strength based on local contrast
-    float sharpAmt = FSR_SHARPNESS * (1.0 - smoothstep(0.0, 0.5, contrast));
+    float sharpAmt = FSR_SHARPNESS * (1.0 + u_sharpen) * (1.0 - smoothstep(0.0, 0.5, contrast));
     
     // High-pass filter for sharpening
     vec3 blur = (n + s + e + w) * 0.25;

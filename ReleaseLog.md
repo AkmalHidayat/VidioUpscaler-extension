@@ -1,5 +1,17 @@
 # Anime4K Web Upscaler - Release Log
 
+## Version 2.4.7 (2025-12-06)
+
+### Fixed
+
+- **FSR Sharpening Strength** - Fixed an issue where the Sharpening Strength slider was ignored when using the FSR 1.0 model.
+
+## Version 2.4.6 (2025-12-06)
+
+### Fixed
+
+- **Seamless Model Switching** - Changing the upscaler model or resolution now applies instantly without reloading the page.
+
 ## Version 2.4.5 (2025-12-06)
 
 ### Fixed

@@ -572,32 +572,42 @@
                 }
             }
 
-            // For heavy changes, we might need to re-process (reload page is safest for model swap)
+            // For heavy changes, restart the upscaler on all videos
             if (limitReload) {
-                location.reload();
+                console.log('[Anime4K] Config changed, restarting upscalers...');
+                const videos = findVideosInRoot(document);
+                videos.forEach(video => {
+                    if (processedVideos.has(video)) {
+                        processedVideos.get(video).cleanup();
+                        processedVideos.delete(video);
+                    }
+                });
+                // Short delay to allow cleanup to finish frame
+                setTimeout(scanVideos, 50);
             }
         }
     });
 
     // ==================== INIT ====================
+    // ==================== INIT ====================
+
+    // Recursive function to find videos including inside Shadow DOM
+    function findVideosInRoot(root, videos = []) {
+        if (!root) return videos;
+        // Add videos from current root
+        root.querySelectorAll('video').forEach(v => videos.push(v));
+
+        // Check all elements for shadow roots
+        root.querySelectorAll('*').forEach(el => {
+            if (el.shadowRoot) {
+                findVideosInRoot(el.shadowRoot, videos);
+            }
+        });
+        return videos;
+    }
+
     function scanVideos() {
-        const videos = [];
-
-        // Recursive function to find videos including inside Shadow DOM
-        function findVideosInRoot(root) {
-            if (!root) return;
-            // Add videos from current root
-            root.querySelectorAll('video').forEach(v => videos.push(v));
-
-            // Check all elements for shadow roots
-            root.querySelectorAll('*').forEach(el => {
-                if (el.shadowRoot) {
-                    findVideosInRoot(el.shadowRoot);
-                }
-            });
-        }
-
-        findVideosInRoot(document);
+        const videos = findVideosInRoot(document);
 
         videos.forEach(video => {
             // ==================== CORS PATCH ====================
