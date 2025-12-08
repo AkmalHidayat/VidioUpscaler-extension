@@ -6,6 +6,95 @@
 > - Update `README.md` where relevant (version badge, usage notes).
 This note is intentionally placed at the top of the release log so downstream reviewers see the requirement.
 
+## Version 2.8.1 (2025-12-08)
+
+### Fixed
+
+- **Model Change Detection** - Improved storage listener logging in content.js to properly detect and handle model changes. Fixed issue where changing model in popup might not immediately reload upscalers by adding enhanced logging and state verification.
+
+- **Storage Load Verification** - Improved initial config loading from chrome.storage.sync to include null checks and better error handling.
+
+### Changed
+
+- Added comprehensive debug logging for storage operations (load, save, change detection)
+- Enhanced popup save function to log successful saves to console for troubleshooting
+- Storage listener now logs all changes to help identify configuration update issues
+
+### Technical Details
+
+- Added console logging at key points: config load, save, and change detection
+- Improved null/undefined checks in storage callback handlers
+- All model changes now trigger proper upscaler restart with visible console logs
+
+---
+
+## Version 2.8.0 (2025-12-08)
+
+### Added
+
+- **Lanczos3 Upscaler** - High-quality reconstruction filter with excellent frequency response. Uses 6x6 Lanczos3 kernel with optional sharpening. Best for general-purpose video upscaling with minimal artifacts and excellent edge definition.
+
+- **ESRGAN Upscaler** - Enhanced Super-Resolution GAN-inspired shader with edge-aware adaptive sharpening. Features Sobel edge detection for content-aware quality adjustment: edges receive stronger sharpening while smooth areas remain artifact-free. Excellent for both anime and photorealistic content.
+
+### Changed
+
+- **Model Count**: Expanded from 8 to 10 available upscaling algorithms
+- Updated popup model selector with new Lanczos3 and ESRGAN options
+- Enhanced README with descriptions of new upscalers
+
+### Technical Details
+
+- **Lanczos3**: 6x6 convolution kernel with sinc-based windowing function, industry-standard for high-quality resampling
+- **ESRGAN**: 4x4 Catmull-Rom cubic interpolation with Sobel gradient detection for adaptive filter strength
+- Both new models support full configuration integration (sharpening slider, quality presets, instance limits)
+
+---
+
+## Version 2.7.1 (2025-12-08)
+
+### Fixed
+
+- **WebGL Texture Bind Error** - Fixed `INVALID_OPERATION: texParameter: no texture bound to target` error in anisotropic filtering setup. Moved texture parameter application from extension detection phase to actual texture creation, ensuring texture is bound before applying parameters.
+
+### Changed
+
+- Anisotropic filtering now only applies when a texture is actually created and bound, preventing premature texture operations
+- Added defensive try-catch wrapper around anisotropic filter application for better error handling
+
+---
+
+## Version 2.7.0 (2025-12-08)
+
+### Added
+
+- **OffscreenCanvas/WebGL2 Rendering Optimization** - Implemented multi-strategy rendering system that automatically selects the best GPU rendering path based on browser capabilities:
+  - **Worker-based OffscreenCanvas rendering**: Offloads GPU rendering to a separate WebWorker thread when both OffscreenCanvas and WebGL2 are available, keeping main thread responsive for smooth video playback
+  - **WebGL2 context preference**: Automatically upgrades to WebGL2 when available for advanced GPU features
+  - **WebGL1 fallback**: Reliable compatibility layer for older browsers and devices
+  
+- **WebGL2 Extensions & Features**:
+  - **Anisotropic texture filtering** (EXT_texture_filter_anisotropic): Sharper, higher-quality textures at steep viewing angles
+  - **GPU vendor/renderer detection** (WEBGL_debug_renderer_info): Logs GPU type for optimization and diagnostics
+  - **Explicit texture float support detection** (OES_texture_float, OES_texture_half_float): Enables high-precision rendering on capable GPUs
+  - **Instancing support check** (ANGLE_instanced_arrays): Prepares for future batch rendering optimizations
+
+- **Worker rendering infrastructure** (`worker.js`): Complete GPU rendering pipeline running in a separate thread with dedicated shader compilation, texture management, and frame processing
+
+### Changed
+
+- **Manifest v2.7.0**: Added `web_accessible_resources` configuration to allow content script to spawn rendering worker
+- **Console logging** now reports selected render strategy (worker-offscreen | webgl2-main | webgl1-main) and GPU vendor/renderer info when available
+- **Performance**: Main thread is now free from GPU rendering when using OffscreenCanvas + WebWorker, improving UI responsiveness on high-demand pages
+
+### Technical Details
+
+- Worker selection logic: OffscreenCanvas + WebGL2 → WebGL2 main-thread → WebGL1 main-thread fallback
+- All WebGL2 extensions are wrapped in try-catch to gracefully degrade on unsupported hardware
+- OffscreenCanvas rendering falls back to main-thread WebGL if worker initialization fails
+- GPU memory is explicitly released via WEBGL_lose_context extension to prevent context exhaustion
+
+---
+
 ## Version 2.6.6 (2025-12-08)
 
 ### Fixed

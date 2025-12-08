@@ -28,12 +28,16 @@
     // Load config from storage
     try {
         chrome.storage.sync.get('anime4k_config', (data) => {
-            if (data.anime4k_config) {
+            if (data && data.anime4k_config) {
                 config = { ...config, ...data.anime4k_config };
-                console.log('[Anime4K] Config loaded:', config);
+                console.log('[Anime4K] Config loaded from storage:', config);
+            } else {
+                console.log('[Anime4K] No stored config found, using defaults');
             }
         });
-    } catch (e) { }
+    } catch (e) {
+        console.warn('[Anime4K] Error loading config:', e);
+    }
 
     function saveConfig() {
         try { chrome.storage.sync.set({ anime4k_config: config }); } catch (e) { }
@@ -182,6 +186,28 @@
 
     const RENDER_SUPPORT = detectRendererSupport();
 
+    // ==================== RENDER STRATEGY ====================
+    // Select optimal rendering path based on browser capabilities
+    const RENDER_STRATEGY = {
+        WORKER_OFFSCREEN: 'worker-offscreen',    // OffscreenCanvas + WebWorker (best performance)
+        WEBGL2_MAIN: 'webgl2-main',             // WebGL2 on main thread
+        WEBGL1_MAIN: 'webgl1-main'              // WebGL1 on main thread (fallback)
+    };
+
+    function selectRenderStrategy() {
+        if (RENDER_SUPPORT.hasOffscreen && RENDER_SUPPORT.hasWebGL2) {
+            // Prefer worker-based rendering if both OffscreenCanvas and WebGL2 available
+            return RENDER_STRATEGY.WORKER_OFFSCREEN;
+        } else if (RENDER_SUPPORT.hasWebGL2) {
+            return RENDER_STRATEGY.WEBGL2_MAIN;
+        } else {
+            return RENDER_STRATEGY.WEBGL1_MAIN;
+        }
+    }
+
+    const CURRENT_STRATEGY = selectRenderStrategy();
+    console.log('[Anime4K] Render strategy:', CURRENT_STRATEGY, '| WebGL2:', RENDER_SUPPORT.hasWebGL2, '| OffscreenCanvas:', RENDER_SUPPORT.hasOffscreen);
+
     // Quality presets and instance limits
     // qualityPreset: 'auto'|'low'|'medium'|'high'
     // maxInstances: integer limit of concurrent upscalers on the page
@@ -245,7 +271,90 @@
         return { program, vs, fs };
     }
 
+    // ==================== WEBGL2 EXTENSIONS SETUP ====================
+    function setupWebGL2Extensions(gl) {
+        try {
+            const extensions = {
+                anisotropic: gl.getExtension('EXT_texture_filter_anisotropic'),
+                textureFloat: gl.getExtension('OES_texture_float'),
+                textureHalf: gl.getExtension('OES_texture_half_float'),
+                colorBufferFloat: gl.getExtension('EXT_color_buffer_float'),
+                colorBufferHalf: gl.getExtension('EXT_color_buffer_half_float'),
+                instanced: gl.getExtension('ANGLE_instanced_arrays'),
+                debug: gl.getExtension('WEBGL_debug_renderer_info')
+            };
+
+            // Log available anisotropic filtering capability (don't apply yet - texture not bound)
+            if (extensions.anisotropic) {
+                try {
+                    const maxAniso = gl.getParameter(extensions.anisotropic.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
+                    console.log('[Anime4K] Anisotropic filtering available (max:', maxAniso, ')');
+                } catch (e) {
+                    console.warn('[Anime4K] Could not query anisotropic max:', e);
+                }
+            }
+
+            // Log GPU info if available
+            if (extensions.debug) {
+                try {
+                    const renderer = gl.getParameter(extensions.debug.UNMASKED_RENDERER_WEBGL);
+                    const vendor = gl.getParameter(extensions.debug.UNMASKED_VENDOR_WEBGL);
+                    console.log('[Anime4K] GPU:', vendor, '|', renderer);
+                } catch (e) {
+                    console.warn('[Anime4K] Could not query GPU info:', e);
+                }
+            }
+
+            return extensions;
+        } catch (e) {
+            console.warn('[Anime4K] WebGL2 extension setup error:', e);
+            return null;
+        }
+    }
+
     // ==================== VIDEO PROCESSING ====================
+    
+    // Initialize worker-based rendering (OffscreenCanvas)
+    function tryInitializeWorkerRendering(video, canvas, wrapper, config) {
+        if (CURRENT_STRATEGY !== RENDER_STRATEGY.WORKER_OFFSCREEN) {
+            return null; // Not using worker strategy
+        }
+
+        try {
+            const workerUrl = chrome.runtime.getURL('worker.js');
+            const worker = new Worker(workerUrl);
+
+            const offscreenCanvas = canvas.transferControlToOffscreen();
+
+            // Send initialization data to worker
+            const shaderData = window.Anime4KShaders ? { ...window.Anime4KShaders } : {};
+            worker.postMessage({
+                type: 'init',
+                data: {
+                    offscreenCanvas,
+                    videoWidth: video.videoWidth,
+                    videoHeight: video.videoHeight,
+                    canvasWidth: canvas.width,
+                    canvasHeight: canvas.height,
+                    config: config,
+                    shaders: shaderData
+                },
+                port: null
+            }, [offscreenCanvas]);
+
+            console.log('[Anime4K] Worker rendering initialized for video', video.videoWidth, 'x', video.videoHeight);
+
+            return {
+                worker: worker,
+                offscreenCanvas: offscreenCanvas,
+                useWorker: true
+            };
+        } catch (e) {
+            console.warn('[Anime4K] Worker initialization failed, falling back to main-thread rendering:', e);
+            return null;
+        }
+    }
+
     function processVideo(video) {
         if (processedVideos.has(video)) return;
         if (video.videoWidth < 100 || video.videoHeight < 100) return;
@@ -304,14 +413,36 @@
             }
         } catch (e) {}
 
-        // Get WebGL context
-        const gl = canvas.getContext('webgl', {
-            alpha: false,
-            antialias: false,
-            depth: false,
-            stencil: false,
-            preserveDrawingBuffer: false
-        });
+        // Get WebGL context (prefer WebGL2)
+        let gl = null;
+        let isWebGL2 = false;
+        
+        if (CURRENT_STRATEGY !== RENDER_STRATEGY.WEBGL1_MAIN) {
+            // Try WebGL2 first if available
+            gl = canvas.getContext('webgl2', {
+                alpha: false,
+                antialias: false,
+                depth: false,
+                stencil: false,
+                preserveDrawingBuffer: false
+            });
+            if (gl) {
+                isWebGL2 = true;
+                console.log('[Anime4K] Using WebGL2 context');
+            }
+        }
+        
+        // Fallback to WebGL1
+        if (!gl) {
+            gl = canvas.getContext('webgl', {
+                alpha: false,
+                antialias: false,
+                depth: false,
+                stencil: false,
+                preserveDrawingBuffer: false
+            });
+            console.log('[Anime4K] Using WebGL1 context');
+        }
 
         if (!gl) {
             console.error('[Anime4K] WebGL not available');
@@ -320,6 +451,12 @@
         }
 
         console.log('[Anime4K] Created WebGL context for video', video.videoWidth, 'x', video.videoHeight, '(total active:', processedVideos.size + 1, ')');
+
+        // ==================== WEBGL2 OPTIMIZATIONS ====================
+        let webgl2Extensions = null;
+        if (isWebGL2) {
+            webgl2Extensions = setupWebGL2Extensions(gl);
+        }
 
         // Clamp to GPU limits (avoid exceeding MAX_TEXTURE_SIZE)
         try {
@@ -393,6 +530,17 @@
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
+        // Apply WebGL2 anisotropic filtering if available
+        if (webgl2Extensions && webgl2Extensions.anisotropic) {
+            try {
+                const maxAniso = gl.getParameter(webgl2Extensions.anisotropic.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
+                gl.texParameterf(gl.TEXTURE_2D, webgl2Extensions.anisotropic.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(maxAniso, 16.0));
+                console.log('[Anime4K] Applied anisotropic filtering (max:', Math.min(maxAniso, 16.0), ')');
+            } catch (e) {
+                console.warn('[Anime4K] Could not apply anisotropic filtering:', e);
+            }
+        }
+
         // Set uniforms
         const textureLoc = gl.getUniformLocation(program, 'u_texture');
         const texSizeLoc = gl.getUniformLocation(program, 'u_texSize');
@@ -435,6 +583,8 @@
             debug: '🔧 Debug (Grayscale)',
             anime4k_v41_fast: 'Anime4K Fast',
             anime4k_v41_hq: 'Anime4K HQ',
+            lanczos3: 'Lanczos3',
+            esrgan: 'ESRGAN',
             fsr: 'FSR 1.0',
             xbrz: 'xBRZ',
             cas: 'CAS',
@@ -769,11 +919,15 @@
         if (namespace !== 'sync') return;
         let limitReload = false;
 
+        console.log('[Anime4K] Storage changed:', changes);
+
         // Prefer structured object updates when possible
         if (changes.anime4k_config && changes.anime4k_config.newValue) {
             const newCfg = changes.anime4k_config.newValue;
+            console.log('[Anime4K] New config from storage:', newCfg);
             if (newCfg.model !== undefined || newCfg.resolution !== undefined || newCfg.customScale !== undefined) {
                 limitReload = true;
+                console.log('[Anime4K] Detected heavy change, will reload upscalers');
             }
             config = { ...config, ...newCfg };
         } else {
@@ -782,13 +936,14 @@
                 config[key] = newValue;
                 if (key === 'model' || key === 'resolution' || key === 'customScale') {
                     limitReload = true;
+                    console.log('[Anime4K] Detected heavy change on key:', key);
                 }
             }
         }
 
         // For heavy changes, restart the upscaler on all videos
         if (limitReload) {
-            console.log('[Anime4K] Config changed, restarting upscalers...');
+            console.log('[Anime4K] Config changed, restarting upscalers... Current config:', config);
             const videos = findVideosInRoot(document);
             videos.forEach(video => {
                 if (processedVideos.has(video)) {
