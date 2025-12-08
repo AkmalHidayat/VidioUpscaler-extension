@@ -1,5 +1,21 @@
 # Anime4K Web Upscaler - Release Log
 
+> NOTE When making changes to this repository , must:
+> - Update `ReleaseLog.md` with a changelog entry describing the change.
+> - Update `manifest.json` version and any metadata as appropriate.
+> - Update `README.md` where relevant (version badge, usage notes).
+> This note is intentionally placed at the top of the release log so downstream reviewers see the requirement.
+
+## Version 2.6.1 (2025-12-08)
+
+### Added
+
+- **Instructions** - Added containing a mandatory checklist that must follow when modifying this repository (update `README.md`, `ReleaseLog.md`, and `manifest.json`).
+
+### Changed
+
+- Updated `README.md` to include the Update Policy and added `update_instructions` metadata to `manifest.json` to point to the instruction file.
+
 ## Version 2.6.0 (2025-12-06)
 
 ### Added

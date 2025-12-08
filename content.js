@@ -187,7 +187,6 @@
         const fs = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
 
         if (!vs || !fs) return null;
-
         const program = gl.createProgram();
         gl.attachShader(program, vs);
         gl.attachShader(program, fs);
@@ -195,10 +194,12 @@
 
         if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
             console.error('[Anime4K] Program link error:', gl.getProgramInfoLog(program));
+            try { gl.deleteShader(vs); gl.deleteShader(fs); } catch (e) {}
             return null;
         }
 
-        return program;
+        // Return program and shader handles so caller can cleanup properly
+        return { program, vs, fs };
     }
 
     // ==================== VIDEO PROCESSING ====================
@@ -263,13 +264,27 @@
             return;
         }
 
+        // Clamp to GPU limits (avoid exceeding MAX_TEXTURE_SIZE)
+        try {
+            const maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 0;
+            if (maxTex > 0 && (canvas.width > maxTex || canvas.height > maxTex)) {
+                const scale = Math.min(maxTex / canvas.width, maxTex / canvas.height);
+                const newW = Math.max(1, Math.floor(canvas.width * scale));
+                const newH = Math.max(1, Math.floor(canvas.height * scale));
+                console.warn('[Anime4K] Clamping output to MAX_TEXTURE_SIZE:', maxTex, '->', newW, 'x', newH);
+                canvas.width = newW;
+                canvas.height = newH;
+            }
+        } catch (e) {
+            // Some environments restrict getParameter, ignore if unavailable
+        }
 
-        // Create program with fallback
-        let program = createProgram(gl, VERTEX_SHADER, getFragmentShader());
 
-        if (!program) {
+        // Create program with fallback. createProgram now returns {program, vs, fs}
+        let programObj = createProgram(gl, VERTEX_SHADER, getFragmentShader());
+        if (!programObj) {
             console.warn('[Anime4K] External shader failed, using basic fallback');
-            program = createProgram(gl, VERTEX_SHADER, `
+            programObj = createProgram(gl, VERTEX_SHADER, `
                 precision mediump float;
                 varying vec2 v_texCoord;
                 uniform sampler2D u_texture;
@@ -277,11 +292,15 @@
             `);
         }
 
-        if (!program) {
+        if (!programObj || !programObj.program) {
             console.error('[Anime4K] Failed to create shader program');
             wrapper.remove();
             return;
         }
+
+        const program = programObj.program;
+        const _vs = programObj.vs;
+        const _fs = programObj.fs;
 
         gl.useProgram(program);
 
@@ -617,11 +636,17 @@
                     }
                 } catch (e) {
                     // Start by checking specific error types
-                    if (e.name === 'SecurityError') {
+                    if (e && e.name === 'SecurityError') {
                         console.warn('[Anime4K] Stopped rendering due to CORS restriction (SecurityError).');
                         showToast('Sorry This Media/Server Is Not Supported', true);
                         running = false;
-                        wrapper.remove();
+                        // Perform thorough cleanup for this video if registered
+                        try {
+                            const data = processedVideos.get(video);
+                            if (data && typeof data.cleanup === 'function') data.cleanup();
+                        } catch (err) {
+                            try { wrapper.remove(); } catch (ignored) {}
+                        }
                     } else {
                         // Only log actual unexpected errors
                         console.error('[Anime4K] Render error:', e);
@@ -634,15 +659,40 @@
 
         requestAnimationFrame(render);
 
-        // Store reference
+        // Store reference and provide thorough cleanup that deletes GL resources
         processedVideos.set(video, {
             wrapper,
             canvas,
             gl,
             running: true,
+            _program: program,
+            _vs: _vs,
+            _fs: _fs,
+            _posBuffer: posBuffer,
+            _texBuffer: texBuffer,
+            _texture: texture,
             cleanup: () => {
                 running = false;
-                wrapper.remove();
+                try { wrapper.remove(); } catch (e) {}
+                try {
+                    if (posBuffer) gl.deleteBuffer(posBuffer);
+                } catch (e) {}
+                try {
+                    if (texBuffer) gl.deleteBuffer(texBuffer);
+                } catch (e) {}
+                try {
+                    if (texture) gl.deleteTexture(texture);
+                } catch (e) {}
+                try {
+                    if (program) gl.deleteProgram(program);
+                } catch (e) {}
+                try {
+                    if (_vs) gl.deleteShader(_vs);
+                } catch (e) {}
+                try {
+                    if (_fs) gl.deleteShader(_fs);
+                } catch (e) {}
+                try { processedVideos.delete(video); } catch (e) {}
             }
         });
 
@@ -651,28 +701,39 @@
 
     // ==================== CONFIG SYNC ====================
     chrome.storage.onChanged.addListener((changes, namespace) => {
-        if (namespace === 'sync') {
-            let limitReload = false;
+        if (namespace !== 'sync') return;
+        let limitReload = false;
+
+        // Prefer structured object updates when possible
+        if (changes.anime4k_config && changes.anime4k_config.newValue) {
+            const newCfg = changes.anime4k_config.newValue;
+            if (newCfg.model !== undefined || newCfg.resolution !== undefined || newCfg.customScale !== undefined) {
+                limitReload = true;
+            }
+            config = { ...config, ...newCfg };
+        } else {
+            // Fallback: support flat key updates
             for (const [key, { newValue }] of Object.entries(changes)) {
                 config[key] = newValue;
                 if (key === 'model' || key === 'resolution' || key === 'customScale') {
                     limitReload = true;
                 }
             }
+        }
 
-            // For heavy changes, restart the upscaler on all videos
-            if (limitReload) {
-                console.log('[Anime4K] Config changed, restarting upscalers...');
-                const videos = findVideosInRoot(document);
-                videos.forEach(video => {
-                    if (processedVideos.has(video)) {
-                        processedVideos.get(video).cleanup();
-                        processedVideos.delete(video);
-                    }
-                });
-                // Short delay to allow cleanup to finish frame
-                setTimeout(scanVideos, 50);
-            }
+        // For heavy changes, restart the upscaler on all videos
+        if (limitReload) {
+            console.log('[Anime4K] Config changed, restarting upscalers...');
+            const videos = findVideosInRoot(document);
+            videos.forEach(video => {
+                if (processedVideos.has(video)) {
+                    const data = processedVideos.get(video);
+                    if (data && typeof data.cleanup === 'function') data.cleanup();
+                    try { processedVideos.delete(video); } catch (e) {}
+                }
+            });
+            // Short delay to allow cleanup to finish frame
+            setTimeout(scanVideos, 50);
         }
     });
 
@@ -729,13 +790,22 @@
         setInterval(scanVideos, 2000);
     }, 500);
 
-    // Cleanup on video removal
+    // Cleanup on video removal - scan removed subtrees for VIDEO elements
     new MutationObserver((mutations) => {
         mutations.forEach(m => {
             m.removedNodes.forEach(node => {
-                if (node.nodeName === 'VIDEO') {
-                    const data = processedVideos.get(node);
-                    if (data) data.cleanup();
+                try {
+                    if (node && node.nodeName === 'VIDEO') {
+                        const data = processedVideos.get(node);
+                        if (data && typeof data.cleanup === 'function') data.cleanup();
+                    } else if (node && node.querySelectorAll) {
+                        node.querySelectorAll('video').forEach(v => {
+                            const data = processedVideos.get(v);
+                            if (data && typeof data.cleanup === 'function') data.cleanup();
+                        });
+                    }
+                } catch (e) {
+                    // ignore errors during mutation handling
                 }
             });
         });

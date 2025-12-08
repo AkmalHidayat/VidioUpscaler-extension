@@ -1,6 +1,6 @@
 # ⚡ VidioUpscaler Extension (Anime4K Web)
 
-![Version](https://img.shields.io/badge/version-2.6.0-green?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.6.1-green?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-Stable-4ade80?style=for-the-badge)
 
@@ -73,3 +73,5 @@ Choose from **8 different algorithms** to best suit your content:
 
 - Based on the [Anime4K](https://github.com/bloc97/Anime4K) algorithm by bloc97.
 - Extension implementation & shader ports by Akmal Hidayat.
+
+---
