@@ -4,25 +4,53 @@
 > - Update `ReleaseLog.md` with a changelog entry describing the change.
 > - Update `manifest.json` version and any metadata as appropriate.
 > - Update `README.md` where relevant (version badge, usage notes).
-> This note is intentionally placed at the top of the release log so downstream reviewers see the requirement.
+This note is intentionally placed at the top of the release log so downstream reviewers see the requirement.
+
+## Version 2.6.4 (2025-12-08)
+
+### Added
+
+- **Max Instances UX** - Added stepper buttons and input validation for the `maxInstances` popup control; input is clamped to the configured min/max (1–32) and saved under `anime4k_config`.
+
+### Changed
+
+- Clamped `maxInstances` on save and applied immediate effect; improved popup UX to prevent invalid values and make it easier to adjust instance limits.
+
+## Version 2.6.3 (2025-12-08)
+
+### Added
+
+- **Popup Controls** - Added user controls in the browser popup to select `qualityPreset` (auto/low/medium/high) and adjust `maxInstances` (concurrent upscalers). Settings are persisted to `chrome.storage.sync` under `anime4k_config`.
+
+### Changed
+
+- Persist popup settings under `anime4k_config` and wire the popup to support legacy flat keys; content scripts will receive structured `onChanged` updates for seamless live configuration.
+
+## Version 2.6.2 (2025-12-08)
+
+### Added
+
+- **Renderer detection & safety** - Detect WebGL2 and `OffscreenCanvas` availability and add quality presets to avoid OOM on weaker devices. Added `qualityPreset` and `maxInstances` configuration options to cap output resolution and concurrent upscalers per page.
+
+### Changed
+
+- Enforced instance limits and applied quality caps (low/medium/high/auto) so large upscaler instances do not exhaust GPU memory on pages with many videos.
 
 ## Version 2.6.1 (2025-12-08)
 
 ### Added
 
-- **Instructions** - Added containing a mandatory checklist that must follow when modifying this repository (update `README.md`, `ReleaseLog.md`, and `manifest.json`).
+- **AI Agent Instructions** - Added `AI_AGENT_INSTRUCTIONS.md` containing a mandatory checklist that automated agents must follow when modifying this repository (update `README.md`, `ReleaseLog.md`, and `manifest.json`).
 
 ### Changed
 
-- Updated `README.md` to include the Update Policy and added `update_instructions` metadata to `manifest.json` to point to the instruction file.
+- Updated `README.md` to include the AI Agent Update Policy and added `update_instructions` metadata to `manifest.json` to point to the instruction file.
 
 ## Version 2.6.0 (2025-12-06)
 
 ### Added
 
 - **Color Vibrance** - Added a saturation booster for more vivid colors (-100% to +100%).
-- **Video Debanding** - Added a filter to remove color banding (blocky gradients) in dark scenes.
-- **Model Rename** - Renamed "RealSR" to "Real-ESRGAN Lite" for clarity.
 
 ## Version 2.5.1 (2025-12-06)
 

@@ -31,11 +31,30 @@ const labels = document.getElementById('labels');
 const statusContainer = document.getElementById('status-container');
 const statusText = document.getElementById('status-text');
 const statusDot = document.getElementById('status-dot');
+const qualityPreset = document.getElementById('quality-preset');
+const maxInstances = document.getElementById('max-instances');
+const maxDec = document.getElementById('max-dec');
+const maxInc = document.getElementById('max-inc');
 
 let currentConfig = { ...defaultConfig };
 
 // Load settings
-chrome.storage.sync.get(defaultConfig, (items) => {
+// Load settings (support both legacy flat keys and `anime4k_config` object)
+chrome.storage.sync.get(['anime4k_config'], (res) => {
+    if (res && res.anime4k_config) {
+        currentConfig = { ...defaultConfig, ...res.anime4k_config };
+    } else {
+        // fallback to flat keys
+        chrome.storage.sync.get(defaultConfig, (items) => {
+            currentConfig = items;
+            populateFields(currentConfig);
+        });
+        return;
+    }
+    populateFields(currentConfig);
+});
+
+function populateFields(items) {
     currentConfig = items;
     model.value = items.model;
     res.value = items.resolution;
@@ -47,9 +66,21 @@ chrome.storage.sync.get(defaultConfig, (items) => {
     fps.checked = items.showFps;
     delay.checked = items.showRenderTime;
     labels.checked = items.showLabels;
+    // New fields
+    qualityPreset.value = items.qualityPreset || 'auto';
+    maxInstances.value = items.maxInstances || 3;
+    // ensure min/max attributes
+    try {
+        const min = parseInt(maxInstances.getAttribute('min'), 10) || 1;
+        const max = parseInt(maxInstances.getAttribute('max'), 10) || 32;
+        let v = parseInt(maxInstances.value, 10) || 3;
+        if (v < min) v = min;
+        if (v > max) v = max;
+        maxInstances.value = v;
+    } catch (e) {}
 
     updateUI();
-});
+}
 
 // UI Logic
 function updateUI() {
@@ -96,11 +127,16 @@ function saveSettings() {
         enabled: currentConfig.enabled
     };
 
+    // include new performance options
+    config.qualityPreset = qualityPreset.value || 'auto';
+    config.maxInstances = getClampedInstances(maxInstances.value || 3);
+
     // Update local ref
     currentConfig = config;
     updateUI();
 
-    chrome.storage.sync.set(config);
+    // Persist under the `anime4k_config` object key so content scripts and other agents read the same schema
+    chrome.storage.sync.set({ anime4k_config: config });
 }
 
 // Toggle logic
@@ -138,16 +174,57 @@ vibrance.addEventListener('change', saveSettings);
     el.addEventListener('change', saveSettings);
 });
 
+// New controls
+qualityPreset.addEventListener('change', saveSettings);
+maxInstances.addEventListener('change', saveSettings);
+// Stepper buttons
+if (maxDec && maxInc) {
+    maxDec.addEventListener('click', (e) => {
+        e.preventDefault();
+        const min = parseInt(maxInstances.getAttribute('min'), 10) || 1;
+        let v = parseInt(maxInstances.value, 10) || min;
+        v = Math.max(min, v - 1);
+        maxInstances.value = v;
+        saveSettings();
+    });
+    maxInc.addEventListener('click', (e) => {
+        e.preventDefault();
+        const max = parseInt(maxInstances.getAttribute('max'), 10) || 32;
+        let v = parseInt(maxInstances.value, 10) || 1;
+        v = Math.min(max, v + 1);
+        maxInstances.value = v;
+        saveSettings();
+    });
+}
+
+function getClampedInstances(raw) {
+    let v = parseInt(raw, 10);
+    if (!isFinite(v) || isNaN(v)) v = 3;
+    const min = parseInt(maxInstances.getAttribute('min'), 10) || 1;
+    const max = parseInt(maxInstances.getAttribute('max'), 10) || 32;
+    if (v < min) v = min;
+    if (v > max) v = max;
+    return v;
+}
+
 // Listen for external updates (e.g. Shortcut Alt+U)
 chrome.storage.onChanged.addListener((changes) => {
     if (changes.anime4k_config) {
         // Reload values that might have changed externally (mostly enabled state)
         const newConf = changes.anime4k_config.newValue;
         if (newConf) {
-            currentConfig = newConf;
-            // We usually don't need to update inputs here to avoid fighting user, 
-            // but status is important
-            updateUI();
+            // merge and update fields/status
+            currentConfig = { ...currentConfig, ...newConf };
+            populateFields(currentConfig);
         }
+    } else {
+        // support legacy flat-key changes
+        for (const key of Object.keys(changes)) {
+            const change = changes[key];
+            if (change && change.newValue !== undefined) {
+                currentConfig[key] = change.newValue;
+            }
+        }
+        populateFields(currentConfig);
     }
 });

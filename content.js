@@ -163,10 +163,53 @@
 
     // ==================== STATE ====================
     let enabled = true;
-    let processedVideos = new WeakMap();
+    let processedVideos = new Map(); // switched from WeakMap to Map so we can track instance count
     let uiReady = false;
     let lowPerfFrameCount = 0;
     let perfWarningShown = false;
+
+    // Detect renderer capabilities (WebGL2 / OffscreenCanvas) and set sensible defaults
+    function detectRendererSupport() {
+        try {
+            const tmp = document.createElement('canvas');
+            const hasWebGL2 = !!tmp.getContext('webgl2');
+            const hasOffscreen = typeof OffscreenCanvas !== 'undefined';
+            return { hasWebGL2, hasOffscreen };
+        } catch (e) {
+            return { hasWebGL2: false, hasOffscreen: false };
+        }
+    }
+
+    const RENDER_SUPPORT = detectRendererSupport();
+
+    // Quality presets and instance limits
+    // qualityPreset: 'auto'|'low'|'medium'|'high'
+    // maxInstances: integer limit of concurrent upscalers on the page
+    if (config.qualityPreset === undefined) config.qualityPreset = 'auto';
+    if (config.maxInstances === undefined) {
+        // sensible defaults based on capabilities
+        config.maxInstances = RENDER_SUPPORT.hasWebGL2 ? (RENDER_SUPPORT.hasOffscreen ? 8 : 6) : 3;
+    }
+
+    function getMaxScaleForPreset() {
+        switch (config.qualityPreset) {
+            case 'low': return 1.5;
+            case 'medium': return 2.0;
+            case 'high': return 4.0;
+            case 'auto':
+            default:
+                // auto: prefer higher scale on WebGL2
+                return RENDER_SUPPORT.hasWebGL2 ? 4.0 : 2.0;
+        }
+    }
+
+    function applyQualityCap(videoW, videoH, desiredW, desiredH) {
+        const desiredScale = Math.max(desiredW / Math.max(1, videoW), desiredH / Math.max(1, videoH));
+        const cap = getMaxScaleForPreset();
+        if (desiredScale <= cap) return [desiredW, desiredH];
+        const scale = cap;
+        return [Math.round(videoW * scale), Math.round(videoH * scale)];
+    }
 
     // ==================== WEBGL HELPERS ====================
     function createShader(gl, type, source) {
@@ -213,7 +256,9 @@
         if (!parent) return;
 
         // Calculate output size
-        const [outW, outH] = getTargetResolution(video.videoWidth, video.videoHeight);
+            let [outW, outH] = getTargetResolution(video.videoWidth, video.videoHeight);
+            // apply quality caps based on preset and renderer support
+            [outW, outH] = applyQualityCap(video.videoWidth, video.videoHeight, outW, outH);
         console.log('[Anime4K] Output resolution:', outW, 'x', outH);
 
         // Get video's actual position and size
@@ -248,6 +293,15 @@
         canvas.height = outH;
         canvas.style.cssText = 'width:100%;height:100%;display:block;background:#000;';
         wrapper.appendChild(canvas);
+
+        // Enforce per-page instance limit
+        try {
+            if (processedVideos.size >= (config.maxInstances || 3)) {
+                console.warn('[Anime4K] Max concurrent upscalers reached:', config.maxInstances);
+                showToast('Max upscaler instances reached on this page', true);
+                return;
+            }
+        } catch (e) {}
 
         // Get WebGL context
         const gl = canvas.getContext('webgl', {
