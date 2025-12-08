@@ -35,6 +35,7 @@ const qualityPreset = document.getElementById('quality-preset');
 const maxInstances = document.getElementById('max-instances');
 const maxDec = document.getElementById('max-dec');
 const maxInc = document.getElementById('max-inc');
+const maxValidation = document.getElementById('max-validation');
 
 let currentConfig = { ...defaultConfig };
 
@@ -177,6 +178,29 @@ vibrance.addEventListener('change', saveSettings);
 // New controls
 qualityPreset.addEventListener('change', saveSettings);
 maxInstances.addEventListener('change', saveSettings);
+maxInstances.addEventListener('input', validateMaxInstances);
+
+// Arrow key support on max-instances
+maxInstances.addEventListener('keydown', (e) => {
+    const min = parseInt(maxInstances.getAttribute('min'), 10) || 1;
+    const max = parseInt(maxInstances.getAttribute('max'), 10) || 32;
+    let v = parseInt(maxInstances.value, 10) || min;
+    
+    if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        v = Math.min(max, v + 1);
+        maxInstances.value = v;
+        validateMaxInstances();
+        saveSettings();
+    } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        v = Math.max(min, v - 1);
+        maxInstances.value = v;
+        validateMaxInstances();
+        saveSettings();
+    }
+});
+
 // Stepper buttons
 if (maxDec && maxInc) {
     maxDec.addEventListener('click', (e) => {
@@ -185,6 +209,7 @@ if (maxDec && maxInc) {
         let v = parseInt(maxInstances.value, 10) || min;
         v = Math.max(min, v - 1);
         maxInstances.value = v;
+        validateMaxInstances();
         saveSettings();
     });
     maxInc.addEventListener('click', (e) => {
@@ -193,6 +218,7 @@ if (maxDec && maxInc) {
         let v = parseInt(maxInstances.value, 10) || 1;
         v = Math.min(max, v + 1);
         maxInstances.value = v;
+        validateMaxInstances();
         saveSettings();
     });
 }
@@ -205,6 +231,21 @@ function getClampedInstances(raw) {
     if (v < min) v = min;
     if (v > max) v = max;
     return v;
+}
+
+function validateMaxInstances() {
+    const min = parseInt(maxInstances.getAttribute('min'), 10) || 1;
+    const max = parseInt(maxInstances.getAttribute('max'), 10) || 32;
+    const v = parseInt(maxInstances.value, 10);
+    
+    if (isNaN(v) || v < min || v > max) {
+        maxValidation.textContent = `Value must be between ${min} and ${max}`;
+        maxValidation.classList.add('show');
+        return false;
+    } else {
+        maxValidation.classList.remove('show');
+        return true;
+    }
 }
 
 // Listen for external updates (e.g. Shortcut Alt+U)

@@ -294,11 +294,12 @@
         canvas.style.cssText = 'width:100%;height:100%;display:block;background:#000;';
         wrapper.appendChild(canvas);
 
-        // Enforce per-page instance limit
+        // Enforce per-page instance limit (hard check before GL context creation)
         try {
             if (processedVideos.size >= (config.maxInstances || 3)) {
-                console.warn('[Anime4K] Max concurrent upscalers reached:', config.maxInstances);
+                console.warn('[Anime4K] Max concurrent upscalers reached:', config.maxInstances, '— skipping video');
                 showToast('Max upscaler instances reached on this page', true);
+                wrapper.remove();
                 return;
             }
         } catch (e) {}
@@ -317,6 +318,8 @@
             wrapper.remove();
             return;
         }
+
+        console.log('[Anime4K] Created WebGL context for video', video.videoWidth, 'x', video.videoHeight, '(total active:', processedVideos.size + 1, ')');
 
         // Clamp to GPU limits (avoid exceeding MAX_TEXTURE_SIZE)
         try {
@@ -745,6 +748,14 @@
                 } catch (e) {}
                 try {
                     if (_fs) gl.deleteShader(_fs);
+                } catch (e) {}
+                // Explicitly lose the WebGL context to free GPU memory
+                try {
+                    const ext = gl.getExtension('WEBGL_lose_context');
+                    if (ext) {
+                        ext.loseContext();
+                        console.log('[Anime4K] Released WebGL context (total active:', processedVideos.size - 1, ')');
+                    }
                 } catch (e) {}
                 try { processedVideos.delete(video); } catch (e) {}
             }

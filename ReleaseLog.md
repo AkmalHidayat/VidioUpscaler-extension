@@ -6,6 +6,26 @@
 > - Update `README.md` where relevant (version badge, usage notes).
 This note is intentionally placed at the top of the release log so downstream reviewers see the requirement.
 
+## Version 2.6.6 (2025-12-08)
+
+### Fixed
+
+- **WebGL Context Leak** - Fixed excessive WebGL context creation warning ("Oldest context will be lost") by explicitly calling `WEBGL_lose_context` extension on cleanup. Improved instance limit enforcement to reject videos before context creation when max instances reached.
+
+### Changed
+
+- Added debug logging for context creation/destruction to track active WebGL contexts and help diagnose context exhaustion issues.
+
+## Version 2.6.5 (2025-12-08)
+
+### Added
+
+- **Validation & Accessibility** - Added in-popup validation messages (red text) for out-of-range `maxInstances` values. Added keyboard accessibility: arrow keys (up/down) to increment/decrement max instances without clicking stepper buttons.
+
+### Changed
+
+- Improved popup UX with live validation feedback and keyboard navigation support for better accessibility and user experience.
+
 ## Version 2.6.4 (2025-12-08)
 
 ### Added
