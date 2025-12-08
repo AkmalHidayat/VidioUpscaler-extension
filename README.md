@@ -1,6 +1,6 @@
 # ⚡ VidioUpscaler Extension (Anime4K Web)
 
-![Version](https://img.shields.io/badge/version-2.8.1-green?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.6.6-green?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-Stable-4ade80?style=for-the-badge)
 
@@ -13,11 +13,9 @@ Boost anime and video quality on YouTube, Bilibili, and other platforms using ad
 
 ### 🚀 Advanced Upscaling Models
 
-Choose from **10 different algorithms** to best suit your content:
+Choose from **8 different algorithms** to best suit your content:
 
 - **Anime4K Fast / HQ**: The gold standard for anime upscaling. Restores lines and reduces noise.
-- **Lanczos3**: High-quality reconstruction filter with excellent frequency response. Best for general-purpose upscaling.
-- **ESRGAN**: Enhanced Super-Resolution GAN with edge-aware adaptive sharpening and edge preservation.
 - **AMD FSR 1.0**: FidelityFX Super Resolution for sharp, high-performance upscaling.
 - **Real-ESRGAN**: Neural-network inspired details and edge enhancement.
 - **CAS (Contrast Adaptive Sharpening)**: Brings out texture and details.
@@ -34,19 +32,6 @@ Choose from **10 different algorithms** to best suit your content:
 
 - **Before/After Slider**: Draggable split-screen comparison to see the difference instantly.
 - **Instant Apply**: Settings change immediately without reloading the page.
-
-### ⚡ Optimized Rendering (v2.7.0+)
-
-- **Multi-Strategy Rendering**: Automatically selects the best rendering path based on GPU capabilities:
-  - **OffscreenCanvas + WebWorker**: Offloads rendering to a separate thread for maximum main-thread performance
-  - **WebGL2**: Enables advanced GPU features for improved quality and efficiency
-  - **WebGL1 Fallback**: Reliable compatibility on older systems
-- **Quality Presets**: Auto, Low, Medium, High — choose resolution caps based on your hardware
-- **Instance Limiting**: Control maximum concurrent upscalers on a single page (1-32)
-- **WebGL2 Extensions**:
-  - Anisotropic Filtering: Sharper textures at acute angles
-  - GPU Vendor/Renderer Detection: Optimize for specific GPU types
-  - Explicit Context Cleanup: Prevents context exhaustion on multi-video pages
 
 ---
 

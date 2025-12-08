@@ -137,10 +137,7 @@ function saveSettings() {
     updateUI();
 
     // Persist under the `anime4k_config` object key so content scripts and other agents read the same schema
-    console.log('[Popup] Saving config:', config);
-    chrome.storage.sync.set({ anime4k_config: config }, () => {
-        console.log('[Popup] Config saved successfully');
-    });
+    chrome.storage.sync.set({ anime4k_config: config });
 }
 
 // Toggle logic
