@@ -1,0 +1,16 @@
+{
+  "name": "vidio-upscaler-extension",
+  "version": "1.0.0",
+  "description": "VidioUpscaler Extension Tests",
+  "main": "content.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "jest": "^27.5.1",
+    "jest-chrome": "^0.8.0"
+  }
+}

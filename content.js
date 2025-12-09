@@ -147,23 +147,6 @@
     }
 
     // ==================== RESOLUTION ====================
-    function getTargetResolution(videoW, videoH) {
-        if (config.resolution === 'custom') {
-            const scale = Math.max(0.1, Math.min(10.0, parseFloat(config.customScale) || 2.0));
-            return [Math.round(videoW * scale), Math.round(videoH * scale)];
-        }
-
-        switch (config.resolution) {
-            case '2x': return [videoW * 2, videoH * 2];
-            case '4x': return [videoW * 4, videoH * 4];
-            case '8x': return [videoW * 8, videoH * 8];
-            case '1080p': return [1920, 1080];
-            case '2k': return [2560, 1440];
-            case '4k': return [3840, 2160];
-            case '8k': return [7680, 4320];
-            default: return [videoW * 2, videoH * 2];
-        }
-    }
 
     // ==================== STATE ====================
     let enabled = true;
@@ -215,26 +198,6 @@
     if (config.maxInstances === undefined) {
         // sensible defaults based on capabilities
         config.maxInstances = RENDER_SUPPORT.hasWebGL2 ? (RENDER_SUPPORT.hasOffscreen ? 8 : 6) : 3;
-    }
-
-    function getMaxScaleForPreset() {
-        switch (config.qualityPreset) {
-            case 'low': return 1.5;
-            case 'medium': return 2.0;
-            case 'high': return 4.0;
-            case 'auto':
-            default:
-                // auto: prefer higher scale on WebGL2
-                return RENDER_SUPPORT.hasWebGL2 ? 4.0 : 2.0;
-        }
-    }
-
-    function applyQualityCap(videoW, videoH, desiredW, desiredH) {
-        const desiredScale = Math.max(desiredW / Math.max(1, videoW), desiredH / Math.max(1, videoH));
-        const cap = getMaxScaleForPreset();
-        if (desiredScale <= cap) return [desiredW, desiredH];
-        const scale = cap;
-        return [Math.round(videoW * scale), Math.round(videoH * scale)];
     }
 
     // ==================== WEBGL HELPERS ====================
@@ -365,9 +328,9 @@
         if (!parent) return;
 
         // Calculate output size
-            let [outW, outH] = getTargetResolution(video.videoWidth, video.videoHeight);
+            let [outW, outH] = a4k.getTargetResolution(video.videoWidth, video.videoHeight, config);
             // apply quality caps based on preset and renderer support
-            [outW, outH] = applyQualityCap(video.videoWidth, video.videoHeight, outW, outH);
+            [outW, outH] = a4k.applyQualityCap(video.videoWidth, video.videoHeight, outW, outH, config, RENDER_SUPPORT);
         console.log('[Anime4K] Output resolution:', outW, 'x', outH);
 
         // Get video's actual position and size
@@ -762,7 +725,7 @@
                 lastVideoW = video.videoWidth;
                 lastVideoH = video.videoHeight;
 
-                const [newW, newH] = getTargetResolution(video.videoWidth, video.videoHeight);
+                const [newW, newH] = a4k.getTargetResolution(video.videoWidth, video.videoHeight, config);
                 canvas.width = newW;
                 canvas.height = newH;
 
@@ -959,23 +922,8 @@
 
     // ==================== INIT ====================
 
-    // Recursive function to find videos including inside Shadow DOM
-    function findVideosInRoot(root, videos = []) {
-        if (!root) return videos;
-        // Add videos from current root
-        root.querySelectorAll('video').forEach(v => videos.push(v));
-
-        // Check all elements for shadow roots
-        root.querySelectorAll('*').forEach(el => {
-            if (el.shadowRoot) {
-                findVideosInRoot(el.shadowRoot, videos);
-            }
-        });
-        return videos;
-    }
-
     function scanVideos() {
-        const videos = findVideosInRoot(document);
+        const videos = a4k.findVideosInRoot(document);
 
         videos.forEach(video => {
             // ==================== CORS PATCH ====================
