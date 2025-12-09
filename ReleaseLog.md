@@ -1,10 +1,51 @@
 # Anime4K Web Upscaler - Release Log
 
 > NOTE When making changes to this repository , must:
+>
 > - Update `ReleaseLog.md` with a changelog entry describing the change.
 > - Update `manifest.json` version and any metadata as appropriate.
 > - Update `README.md` where relevant (version badge, usage notes).
 This note is intentionally placed at the top of the release log so downstream reviewers see the requirement.
+
+## Version 2.8.2 (2025-12-09)
+
+### Added
+
+- **Modular Codebase Architecture** - Complete refactoring of the codebase into modular components for better maintainability:
+  - `src/config.js` - Shared configuration constants and default settings
+  - `src/utils/webgl-utils.js` - WebGL helper functions (shader compilation, context management)
+  - `src/utils/dom-utils.js` - DOM manipulation utilities (element creation, toast notifications)
+  - `src/utils/shader-utils.js` - Shader source management and post-processing injection
+  - `src/utils/resolution-utils.js` - Resolution calculation and quality cap utilities
+  - `src/core/video-processor.js` - Core VideoProcessor class with render loop
+  - `src/content-main.js` - Main entry point for content script
+  - `src/popup-main.js` - Main entry point for popup script
+  - `src/worker-main.js` - Main entry point for worker script
+
+- **Build System** - Added Node.js-based build tooling:
+  - `package.json` with npm scripts for build, watch, clean, and lint
+  - `build.js` - Custom build script that concatenates modules for distribution
+  - `.eslintrc.json` - ESLint configuration for code quality
+
+- **JSDoc Documentation** - Added comprehensive JSDoc comments to all modules
+
+### Changed
+
+- **Manifest v2.8.2** - Updated content scripts to load modular source files
+- **README.md** - Added Development section with project structure and build commands
+- **popup.js** - Fixed duplicate comment on line 1-2
+- **popup.html** - Added config.js as dependency for shared constants
+- **.gitignore** - Added node_modules, dist, and IDE files
+
+### Technical Details
+
+- Codebase now organized into logical modules (config, utils, core)
+- Eliminated code duplication between content.js and worker.js
+- Magic numbers replaced with named constants
+- All utility classes exposed via window/self for cross-context usage
+- Build system allows development with source files OR bundled distribution
+
+---
 
 ## Version 2.8.1 (2025-12-08)
 

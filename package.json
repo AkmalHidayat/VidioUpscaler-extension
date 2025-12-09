@@ -1,0 +1,28 @@
+{
+    "name": "anime4k-web-upscaler",
+    "version": "2.8.1",
+    "description": "Real-time video upscaling with Anime4K, FSR, and more",
+    "main": "src/index.js",
+    "scripts": {
+        "build": "node build.js",
+        "build:watch": "node build.js --watch",
+        "clean": "node -e \"require('fs').rmSync('dist', {recursive:true, force:true})\"",
+        "lint": "eslint src/",
+        "prebuild": "npm run clean"
+    },
+    "keywords": [
+        "anime4k",
+        "video",
+        "upscaler",
+        "webgl",
+        "chrome-extension"
+    ],
+    "author": "Akmal Hidayat",
+    "license": "MIT",
+    "devDependencies": {
+        "eslint": "^8.56.0"
+    },
+    "engines": {
+        "node": ">=16.0.0"
+    }
+}

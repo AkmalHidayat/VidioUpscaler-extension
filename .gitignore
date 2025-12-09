@@ -2,3 +2,15 @@
 /_metadata/generated_indexed_rulesets
 /_metadata
 
+# Build output
+/dist
+
+# Node.js
+/node_modules
+package-lock.json
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo

@@ -1,8 +1,14 @@
-// worker.js - OffscreenCanvas Rendering Worker
-// Offloads GPU rendering to a separate thread, improving main thread performance
-// Communicates with content.js via MessagePort
+/**
+ * @fileoverview Main entry point for Anime4K worker script
+ * Handles OffscreenCanvas rendering in a separate thread.
+ * @version 2.8.1
+ */
+
+'use strict';
 
 console.log('[Anime4K-Worker] Initializing rendering worker...');
+
+// ==================== WORKER STATE ====================
 
 const workerState = {
     gl: null,
@@ -17,27 +23,54 @@ const workerState = {
     videoHeight: 0,
     canvasWidth: 0,
     canvasHeight: 0,
-    shaders: {}
+    shaders: {},
+    extensions: null
 };
 
-// Receive port from content.js
+// ==================== MESSAGE HANDLER ====================
+
 self.onmessage = (event) => {
     const { type, data, port } = event.data;
 
-    if (type === 'init') {
-        console.log('[Anime4K-Worker] Received OffscreenCanvas');
-        initializeWorker(data, port);
-    } else if (type === 'frame') {
-        renderFrame(data);
-    } else if (type === 'config') {
-        workerState.config = { ...workerState.config, ...data };
-        console.log('[Anime4K-Worker] Config updated:', workerState.config);
-    } else if (type === 'cleanup') {
-        cleanup();
+    switch (type) {
+        case 'init':
+            console.log('[Anime4K-Worker] Received OffscreenCanvas');
+            initializeWorker(data, port);
+            break;
+        case 'frame':
+            renderFrame(data);
+            break;
+        case 'config':
+            workerState.config = { ...workerState.config, ...data };
+            console.log('[Anime4K-Worker] Config updated:', workerState.config);
+            break;
+        case 'cleanup':
+            cleanup();
+            break;
+        default:
+            console.warn('[Anime4K-Worker] Unknown message type:', type);
     }
 };
 
+// ==================== INITIALIZATION ====================
+
+/**
+ * Initializes the worker with OffscreenCanvas
+ * @param {Object} data - Initialization data
+ * @param {MessagePort} port - Communication port
+ */
 function initializeWorker(data, port) {
+    const WebGLUtils = self.WebGLUtils;
+    const ShaderUtils = self.ShaderUtils;
+    const Config = self.Anime4KConfig || {};
+    const WEBGL_OPTIONS = Config.WEBGL_CONSTANTS?.CONTEXT_OPTIONS || {
+        alpha: false,
+        antialias: false,
+        depth: false,
+        stencil: false,
+        preserveDrawingBuffer: false
+    };
+
     const { offscreenCanvas, videoWidth, videoHeight, canvasWidth, canvasHeight, config, shaders } = data;
 
     workerState.canvas = offscreenCanvas;
@@ -48,29 +81,19 @@ function initializeWorker(data, port) {
     workerState.config = config;
     workerState.shaders = shaders;
 
-    // Try to get WebGL2 context first, fallback to WebGL1
-    workerState.gl = offscreenCanvas.getContext('webgl2', {
-        alpha: false,
-        antialias: false,
-        depth: false,
-        stencil: false,
-        preserveDrawingBuffer: false
-    });
+    // Get WebGL context (prefer WebGL2)
+    let isWebGL2 = false;
+    workerState.gl = offscreenCanvas.getContext('webgl2', WEBGL_OPTIONS);
 
-    let isWebGL2 = !!workerState.gl;
-    if (!workerState.gl) {
-        workerState.gl = offscreenCanvas.getContext('webgl', {
-            alpha: false,
-            antialias: false,
-            depth: false,
-            stencil: false,
-            preserveDrawingBuffer: false
-        });
+    if (workerState.gl) {
+        isWebGL2 = true;
+    } else {
+        workerState.gl = offscreenCanvas.getContext('webgl', WEBGL_OPTIONS);
     }
 
     if (!workerState.gl) {
         console.error('[Anime4K-Worker] Failed to get WebGL context');
-        port.postMessage({ type: 'error', error: 'WebGL not available' });
+        port?.postMessage({ type: 'error', error: 'WebGL not available' });
         return;
     }
 
@@ -78,8 +101,49 @@ function initializeWorker(data, port) {
 
     const gl = workerState.gl;
 
-    // Setup shader program
-    const vertexShader = `
+    // Get shader sources
+    const vertexShader = ShaderUtils?.getVertexShader() || getVertexShader();
+    let fragmentShader = config.externalShader || ShaderUtils?.getBasicShader() || getBasicFragmentShader();
+
+    // Inject post-processing
+    fragmentShader = ShaderUtils?.injectPostProcessing(fragmentShader) ||
+        injectPostProcessing(fragmentShader, config);
+
+    // Create program
+    const programObj = WebGLUtils?.createProgram(gl, vertexShader, fragmentShader) ||
+        createProgram(gl, vertexShader, fragmentShader);
+
+    if (!programObj) {
+        console.error('[Anime4K-Worker] Program creation failed');
+        port?.postMessage({ type: 'error', error: 'Shader compilation failed' });
+        return;
+    }
+
+    workerState.program = programObj;
+
+    // Setup buffers
+    workerState.posBuffer = WebGLUtils?.createPositionBuffer(gl) || createPositionBuffer(gl);
+    workerState.texBuffer = WebGLUtils?.createTexCoordBuffer(gl) || createTexCoordBuffer(gl);
+
+    // Create texture
+    workerState.texture = WebGLUtils?.createVideoTexture(gl) || createVideoTexture(gl);
+
+    // WebGL2 optimizations
+    if (isWebGL2 && WebGLUtils?.setupWebGL2Extensions) {
+        workerState.extensions = WebGLUtils.setupWebGL2Extensions(gl);
+    }
+
+    workerState.running = true;
+
+    console.log('[Anime4K-Worker] Initialization complete, ready to render');
+    port?.postMessage({ type: 'ready' });
+}
+
+// ==================== FALLBACK FUNCTIONS ====================
+// These are used if the utility modules are not available in worker context
+
+function getVertexShader() {
+    return `
         attribute vec2 a_position;
         attribute vec2 a_texCoord;
         varying vec2 v_texCoord;
@@ -88,61 +152,6 @@ function initializeWorker(data, port) {
             v_texCoord = a_texCoord;
         }
     `;
-
-    let fragmentShader = config.externalShader || getBasicFragmentShader();
-
-    // Inject post-processing (vibrance, deband)
-    fragmentShader = injectPostProcessing(fragmentShader, config);
-
-    // Compile program
-    const program = createProgram(gl, vertexShader, fragmentShader);
-    if (!program) {
-        console.error('[Anime4K-Worker] Program creation failed');
-        port.postMessage({ type: 'error', error: 'Shader compilation failed' });
-        return;
-    }
-
-    workerState.program = program;
-
-    // Setup buffers
-    const posBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-        -1.0, -1.0,
-        1.0, -1.0,
-        -1.0, 1.0,
-        1.0, 1.0
-    ]), gl.STATIC_DRAW);
-    workerState.posBuffer = posBuffer;
-
-    const texBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, texBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-        0.0, 1.0,
-        1.0, 1.0,
-        0.0, 0.0,
-        1.0, 0.0
-    ]), gl.STATIC_DRAW);
-    workerState.texBuffer = texBuffer;
-
-    // Create texture
-    const texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    workerState.texture = texture;
-
-    // WebGL2-specific optimizations
-    if (isWebGL2) {
-        setupWebGL2Optimizations(gl);
-    }
-
-    workerState.running = true;
-
-    console.log('[Anime4K-Worker] Initialization complete, ready to render');
-    port.postMessage({ type: 'ready' });
 }
 
 function getBasicFragmentShader() {
@@ -169,7 +178,6 @@ function getBasicFragmentShader() {
 }
 
 function injectPostProcessing(fragmentShader, config) {
-    // Add post-processing uniforms and functions
     let enhanced = fragmentShader.replace('void main() {', `
         uniform float u_vibrance;
         uniform float u_deband;
@@ -192,7 +200,6 @@ function injectPostProcessing(fragmentShader, config) {
         void main() {
     `);
 
-    // Inject vibrance boost at end of main before gl_FragColor assignment
     enhanced = enhanced.replace('gl_FragColor = ', `
         vec3 rgb = gl_FragColor.rgb;
         if (u_vibrance > 0.0) {
@@ -224,6 +231,7 @@ function createProgram(gl, vsSource, fsSource) {
     const fs = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
 
     if (!vs || !fs) return null;
+
     const program = gl.createProgram();
     gl.attachShader(program, vs);
     gl.attachShader(program, fs);
@@ -231,49 +239,60 @@ function createProgram(gl, vsSource, fsSource) {
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
         console.error('[Anime4K-Worker] Program link error:', gl.getProgramInfoLog(program));
-        try { gl.deleteShader(vs); gl.deleteShader(fs); } catch (e) {}
+        try { gl.deleteShader(vs); gl.deleteShader(fs); } catch (e) { }
         return null;
     }
 
     return { program, vs, fs };
 }
 
-function setupWebGL2Optimizations(gl) {
-    console.log('[Anime4K-Worker] Setting up WebGL2 optimizations...');
-
-    // Check for important WebGL2 extensions
-    const extensions = {
-        anisotropic: gl.getExtension('EXT_texture_filter_anisotropic'),
-        textureFloat: gl.getExtension('OES_texture_float'),
-        textureHalf: gl.getExtension('OES_texture_half_float'),
-        colorBufferFloat: gl.getExtension('EXT_color_buffer_float'),
-        colorBufferHalf: gl.getExtension('EXT_color_buffer_half_float'),
-        instanced: gl.getExtension('ANGLE_instanced_arrays'),
-        debug: gl.getExtension('WEBGL_debug_renderer_info')
-    };
-
-    if (extensions.anisotropic) {
-        const maxAniso = gl.getParameter(extensions.anisotropic.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
-        gl.texParameterf(gl.TEXTURE_2D, extensions.anisotropic.TEXTURE_MAX_ANISOTROPY_EXT, maxAniso);
-        console.log('[Anime4K-Worker] Anisotropic filtering enabled (max:', maxAniso, ')');
-    }
-
-    if (extensions.debug) {
-        const renderer = gl.getParameter(extensions.debug.UNMASKED_RENDERER_WEBGL);
-        const vendor = gl.getParameter(extensions.debug.UNMASKED_VENDOR_WEBGL);
-        console.log('[Anime4K-Worker] GPU:', vendor, renderer);
-    }
-
-    workerState.extensions = extensions;
+function createPositionBuffer(gl) {
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+        -1.0, -1.0,
+        1.0, -1.0,
+        -1.0, 1.0,
+        1.0, 1.0
+    ]), gl.STATIC_DRAW);
+    return buffer;
 }
 
+function createTexCoordBuffer(gl) {
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+        0.0, 1.0,
+        1.0, 1.0,
+        0.0, 0.0,
+        1.0, 0.0
+    ]), gl.STATIC_DRAW);
+    return buffer;
+}
+
+function createVideoTexture(gl) {
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return texture;
+}
+
+// ==================== RENDERING ====================
+
+/**
+ * Renders a single frame
+ * @param {Object} data - Frame data including imageData
+ */
 function renderFrame(data) {
     if (!workerState.running || !workerState.gl || !workerState.program) {
         return;
     }
 
     try {
-        const { imageData, timestamp } = data;
+        const { imageData } = data;
         const gl = workerState.gl;
         const program = workerState.program.program;
 
@@ -304,7 +323,7 @@ function renderFrame(data) {
             gl.uniform1f(vibranceLoc, workerState.config.vibrance || 0.1);
         }
 
-        // Upload frame data to texture
+        // Upload frame data
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, workerState.texture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, imageData);
@@ -320,6 +339,11 @@ function renderFrame(data) {
     }
 }
 
+// ==================== CLEANUP ====================
+
+/**
+ * Cleans up worker resources
+ */
 function cleanup() {
     if (!workerState.gl) return;
 

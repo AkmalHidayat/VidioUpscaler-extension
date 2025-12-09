@@ -1,6 +1,6 @@
 # ⚡ VidioUpscaler Extension (Anime4K Web)
 
-![Version](https://img.shields.io/badge/version-2.8.1-green?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.8.2-green?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-Stable-4ade80?style=for-the-badge)
 
@@ -65,8 +65,8 @@ Choose from **10 different algorithms** to best suit your content:
 1. Open any video (e.g., YouTube).
 2. The extension automatically activates. You'll see a green **"✨ Anime4K ON"** button.
 3. **Shortcuts**:
-    - `Alt + A`: Toggle ON/OFF
-    - `Alt + S`: Open Settings Panel
+    - `Alt + U`: Toggle ON/OFF
+    - Click Extension Icon: Open Settings Panel
 
 ### Settings Panel Guide
 
@@ -81,6 +81,61 @@ Choose from **10 different algorithms** to best suit your content:
 
 - **GPU Usage**: This extension uses your Graphics Card (WebGL). High resolutions (4K/8K) requires a decent GPU.
 - **Lower Delay**: If video stutters, try the **"Anime4K Fast"** model or reduce resolution to **1080p/2x**.
+
+---
+
+## 🛠️ Development
+
+### Project Structure (v2.8.2+)
+
+The codebase has been refactored into modular components:
+
+```
+VidioUpscaler-extension/
+├── src/
+│   ├── config.js              # Shared configuration & constants
+│   ├── content-main.js        # Content script entry point
+│   ├── popup-main.js          # Popup script entry point
+│   ├── worker-main.js         # Worker script entry point
+│   ├── core/
+│   │   └── video-processor.js # Core video processing logic
+│   └── utils/
+│       ├── webgl-utils.js     # WebGL helper functions
+│       ├── dom-utils.js       # DOM manipulation utilities
+│       ├── shader-utils.js    # Shader compilation utilities
+│       └── resolution-utils.js # Resolution calculation utilities
+├── Model/                      # Shader model files
+├── popup.html                  # Extension popup UI
+├── popup.js                    # Popup script (legacy, still works)
+├── manifest.json               # Chrome extension manifest
+├── package.json                # Node.js dependencies & scripts
+└── build.js                    # Build script for bundling
+```
+
+### Build Commands
+
+```bash
+# Install development dependencies
+npm install
+
+# Build bundled extension to /dist
+npm run build
+
+# Watch mode - auto-rebuild on changes
+npm run build:watch
+
+# Clean dist folder
+npm run clean
+
+# Lint source files
+npm run lint
+```
+
+### Development Workflow
+
+1. **Direct Development**: Load the extension folder directly in Chrome. Changes to files are reflected after refreshing the page.
+
+2. **Build for Distribution**: Run `npm run build` to create optimized, bundled files in `/dist`. Use this folder for production releases.
 
 ---
 

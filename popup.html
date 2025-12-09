@@ -122,12 +122,15 @@
             height: 36px;
             border-radius: 8px;
             font-size: 18px;
-            display:inline-flex;
-            align-items:center;
-            justify-content:center;
-            cursor:pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
         }
-        .stepper:active { transform: translateY(1px); }
+
+        .stepper:active {
+            transform: translateY(1px);
+        }
 
         .validation-msg {
             font-size: 10px;
@@ -136,6 +139,7 @@
             display: none;
             font-weight: 500;
         }
+
         .validation-msg.show {
             display: block;
         }
@@ -242,7 +246,8 @@
     <label style="margin-top:8px">Max Instances (concurrent upscalers)</label>
     <div style="display:flex;gap:8px;align-items:center;">
         <button id="max-dec" class="stepper" aria-label="Decrease">−</button>
-        <input type="number" id="max-instances" min="1" max="32" value="3" style="flex:1;padding:8px;background:#222;border:1px solid #444;border-radius:8px;color:#fff;">
+        <input type="number" id="max-instances" min="1" max="32" value="3"
+            style="flex:1;padding:8px;background:#222;border:1px solid #444;border-radius:8px;color:#fff;">
         <button id="max-inc" class="stepper" aria-label="Increase">+</button>
     </div>
     <div id="max-validation" class="validation-msg"></div>
@@ -271,7 +276,8 @@
     <!-- Apply button removed for instant settings -->
     <div style="font-size:10px;color:#666;text-align:center;margin-top:12px;">Shortcut: <b>Alt+U</b> to Toggle</div>
 
-    <script src="popup.js"></script>
+    <script src="src/config.js"></script>
+    <script src="src/popup-main.js"></script>
 </body>
 
 </html>
