@@ -1,7 +1,7 @@
 /**
- * @fileoverview Main entry point for Anime4K content script
+ * @fileoverview Main entry point for NextClarity content script
  * This file initializes and orchestrates all video processing functionality.
- * @version 2.8.3
+ * @version 2.8.7
  */
 
 (function () {
@@ -11,7 +11,8 @@
     if (window.__anime4k_loaded__) return;
     window.__anime4k_loaded__ = true;
 
-    console.log('%c[Anime4K v2.8.3] Starting...', 'color: #4ade80; font-weight: bold');
+    // Get logger reference
+    const Log = window.NCLogger || console;
 
     // Get references to utility modules
     const Config = window.Anime4KConfig || {};
@@ -35,9 +36,15 @@
     /** @type {string} Current render strategy */
     const CURRENT_STRATEGY = ResolutionUtils.selectRenderStrategy(RENDER_SUPPORT);
 
-    console.log('[Anime4K] Render strategy:', CURRENT_STRATEGY,
-        '| WebGL2:', RENDER_SUPPORT.hasWebGL2,
-        '| OffscreenCanvas:', RENDER_SUPPORT.hasOffscreen);
+    // Startup logging
+    Log.banner?.('2.8.7') || console.log('%c[NextClarity v2.8.7] Starting...', 'color: #4ade80; font-weight: bold');
+
+    Log.group?.('CORE', 'System Capabilities', {
+        'Render Strategy': CURRENT_STRATEGY,
+        'WebGL2 Support': RENDER_SUPPORT.hasWebGL2 ? '✓ Yes' : '✗ No',
+        'OffscreenCanvas': RENDER_SUPPORT.hasOffscreen ? '✓ Yes' : '✗ No',
+        'Hardware Concurrency': navigator.hardwareConcurrency || 'Unknown'
+    });
 
     // Apply default max instances based on capabilities
     if (config.maxInstances === undefined) {
@@ -63,24 +70,24 @@
      */
     function loadConfig() {
         if (!isExtensionContextValid()) {
-            console.warn('[Anime4K] Extension context invalidated, skipping config load');
+            Log.warn('STORAGE', 'Extension context invalidated, skipping config load');
             return;
         }
         try {
             chrome.storage.sync.get(STORAGE_KEYS.CONFIG, (data) => {
                 if (chrome.runtime.lastError) {
-                    console.warn('[Anime4K] Storage error:', chrome.runtime.lastError);
+                    Log.warn('STORAGE', 'Storage error:', chrome.runtime.lastError);
                     return;
                 }
                 if (data && data[STORAGE_KEYS.CONFIG]) {
                     config = { ...config, ...data[STORAGE_KEYS.CONFIG] };
-                    console.log('[Anime4K] Config loaded from storage:', config);
+                    Log.group('CONFIG', 'Loaded from storage', config);
                 } else {
-                    console.log('[Anime4K] No stored config found, using defaults');
+                    Log.log('CONFIG', 'No stored config found, using defaults');
                 }
             });
         } catch (e) {
-            console.warn('[Anime4K] Error loading config:', e);
+            Log.warn('CONFIG', 'Error loading config:', e);
         }
     }
 
@@ -89,17 +96,17 @@
      */
     function saveConfig() {
         if (!isExtensionContextValid()) {
-            console.warn('[Anime4K] Extension context invalidated, skipping config save');
+            Log.warn('STORAGE', 'Extension context invalidated, skipping config save');
             return;
         }
         try {
             chrome.storage.sync.set({ [STORAGE_KEYS.CONFIG]: config }, () => {
                 if (chrome.runtime.lastError) {
-                    console.warn('[Anime4K] Storage save error:', chrome.runtime.lastError);
+                    Log.warn('STORAGE', 'Storage save error:', chrome.runtime.lastError);
                 }
             });
         } catch (e) {
-            console.warn('[Anime4K] Error saving config:', e);
+            Log.warn('STORAGE', 'Error saving config:', e);
         }
     }
 
@@ -123,12 +130,12 @@
 
         // Check instance limit
         if (processedVideos.size >= maxInstances) {
-            console.warn('[Anime4K] Max concurrent upscalers reached:', maxInstances, '— skipping video');
+            Log.warn('VIDEO', `Max concurrent upscalers reached (${maxInstances}) — skipping video`);
             DOMUtils.showToast('Max upscaler instances reached on this page', true);
             return;
         }
 
-        console.log('[Anime4K] Processing video:', video.videoWidth, 'x', video.videoHeight);
+        Log.log('VIDEO', `Processing video: ${video.videoWidth}x${video.videoHeight}`);
 
         // Create processor
         const processor = new VideoProcessor(video, config, RENDER_SUPPORT);
@@ -137,7 +144,7 @@
             // Set cleanup callback
             processor.onCleanup = () => {
                 processedVideos.delete(video);
-                console.log('[Anime4K] Released resources (total active:', processedVideos.size, ')');
+                Log.log('VIDEO', `Released resources (total active: ${processedVideos.size})`);
             };
 
             // Store reference
@@ -146,7 +153,7 @@
             // Start render loop
             processor.startRenderLoop();
 
-            console.log('[Anime4K] Created upscaler (total active:', processedVideos.size, ')');
+            Log.success('VIDEO', `Created upscaler (total active: ${processedVideos.size})`);
         }
     }
 
@@ -194,32 +201,32 @@
 
         let needsReload = false;
 
-        console.log('[Anime4K] Storage changed:', changes);
+        Log.log('STORAGE', 'Storage changed:', changes);
 
         if (changes[STORAGE_KEYS.CONFIG] && changes[STORAGE_KEYS.CONFIG].newValue) {
             const newCfg = changes[STORAGE_KEYS.CONFIG].newValue;
-            console.log('[Anime4K] New config from storage:', newCfg);
+            Log.group('CONFIG', 'New config from storage', newCfg);
 
             if (newCfg.model !== undefined || newCfg.resolution !== undefined || newCfg.customScale !== undefined) {
                 needsReload = true;
-                console.log('[Anime4K] Detected heavy change, will reload upscalers');
+                Log.log('CONFIG', 'Detected heavy change, will reload upscalers');
             }
 
-            config = { ...config, ...newCfg };
+            Object.assign(config, newCfg);
         } else {
             // Fallback: flat key updates
             for (const [key, { newValue }] of Object.entries(changes)) {
                 config[key] = newValue;
                 if (key === 'model' || key === 'resolution' || key === 'customScale') {
                     needsReload = true;
-                    console.log('[Anime4K] Detected heavy change on key:', key);
+                    Log.log('CONFIG', `Detected heavy change on key: ${key}`);
                 }
             }
         }
 
         // Reload upscalers for heavy changes
         if (needsReload) {
-            console.log('[Anime4K] Config changed, restarting upscalers...');
+            Log.log('VIDEO', 'Config changed, restarting upscalers...');
 
             const videos = DOMUtils.findVideosInRoot(document);
             videos.forEach(video => {
@@ -266,7 +273,7 @@
         if (e.altKey && e.key.toLowerCase() === 'u') {
             config.enabled = !config.enabled;
             saveConfig();
-            DOMUtils.showToast(config.enabled ? '✨ Anime4K ENABLED' : '○ Anime4K DISABLED');
+            DOMUtils.showToast(config.enabled ? '✨ NextClarity ENABLED' : '○ NextClarity DISABLED');
         }
     });
 
@@ -277,7 +284,7 @@
 
     // Wait for shaders and start
     setTimeout(() => {
-        console.log('[Anime4K] Available shaders:', Object.keys(window.Anime4KShaders || {}));
+        Log.log('SHADER', `Available shaders: ${Object.keys(window.Anime4KShaders || {}).join(', ')}`)
         scanVideos();
         setInterval(scanVideos, PERFORMANCE.VIDEO_SCAN_INTERVAL_MS || 2000);
     }, PERFORMANCE.SHADER_INIT_DELAY_MS || 500);

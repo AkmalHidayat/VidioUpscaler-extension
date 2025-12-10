@@ -1,5 +1,5 @@
 /**
- * @fileoverview Shader utility functions for Anime4K Web Upscaler
+ * @fileoverview Shader utility functions for NextClarity
  * Contains functions for shader source manipulation and post-processing injection.
  * @version 2.8.1
  */

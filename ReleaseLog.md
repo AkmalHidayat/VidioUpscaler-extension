@@ -1,4 +1,4 @@
-# Anime4K Web Upscaler - Release Log
+# NextClarity - Release Log
 
 > NOTE When making changes to this repository , must:
 >
@@ -6,6 +6,56 @@
 > - Update `manifest.json` version and any metadata as appropriate.
 > - Update `README.md` where relevant (version badge, usage notes).
 This note is intentionally placed at the top of the release log so downstream reviewers see the requirement.
+
+## Version 2.8.7 (2025-12-10)
+
+### Added
+
+- **Enhanced Debug Logging** - New centralized logging system (`NCLogger`) with:
+  - Color-coded console output by category (CORE, WEBGL, SHADER, CONFIG, VIDEO, STORAGE, UI, WORKER, PERF)
+  - Timestamps for each log entry
+  - Styled startup banner showing version
+  - Collapsible grouped logs for config and system info
+  - Success/warning/error level differentiation
+  - Performance timing helpers (`Log.time()` / `Log.timeEnd()`)
+
+---
+
+## Version 2.8.6 (2025-12-10)
+
+### Fixed
+
+- **Popup Script Error** - Fixed `Identifier 'DEFAULT_CONFIG' has already been declared` syntax error. Renamed popup-local variable names (`PopupDefaultConfig`, `PopupPerformance`) to avoid conflicts with global declarations from `config.js` which is loaded in the same context.
+
+---
+
+## Version 2.8.5 (2025-12-10)
+
+### Fixed
+
+- **Live Settings Update** - Fixed critical bug where popup settings changes (sharpen, vibrance, compare mode, etc.) were not applying to active video upscalers. The config object is now mutated in-place using `Object.assign()` instead of being replaced, so VideoProcessor instances receive live updates.
+
+- **YouTube CORS Errors** - Added `doubleclick.net`, `googleads.g.doubleclick.net`, `google.com`, and `googleapis.com` to excluded domains in CORS bypass rules to prevent interference with YouTube's tracking and API requests.
+
+---
+
+## Version 2.8.4 (2025-12-10)
+
+### Changed
+
+- **Rebranded to NextClarity** - Extension renamed from "Anime4K Web Upscaler" to "NextClarity" across all user-facing components:
+  - Updated extension name in `manifest.json`
+  - Updated package name in `package.json` to `nextclarity`
+  - Updated popup header to display "✨ NextClarity"
+  - Updated README title and documentation
+  - Updated ReleaseLog title
+  - Updated all source file headers and startup messages
+
+### Fixed
+
+- **Popup Emoji Encoding** - Added `<meta charset="UTF-8">` to `popup.html` to fix garbled emoji characters in the extension popup
+
+---
 
 ## Version 2.8.2 (2025-12-09)
 

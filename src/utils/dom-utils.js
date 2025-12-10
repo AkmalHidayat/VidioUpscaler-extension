@@ -1,5 +1,5 @@
 /**
- * @fileoverview DOM utility functions for Anime4K Web Upscaler
+ * @fileoverview DOM utility functions for NextClarity
  * Contains helper functions for DOM manipulation, styling, and UI elements.
  * @version 2.8.1
  */

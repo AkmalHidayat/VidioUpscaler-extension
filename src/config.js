@@ -1,5 +1,5 @@
 /**
- * @fileoverview Shared configuration module for Anime4K Web Upscaler
+ * @fileoverview Shared configuration module for NextClarity
  * This file contains all shared constants, default configurations, and settings
  * used across content.js, popup.js, and worker.js
  * @version 2.8.1

@@ -1,12 +1,12 @@
 /**
- * @fileoverview Main entry point for Anime4K worker script
+ * @fileoverview Main entry point for NextClarity worker script
  * Handles OffscreenCanvas rendering in a separate thread.
  * @version 2.8.1
  */
 
 'use strict';
 
-console.log('[Anime4K-Worker] Initializing rendering worker...');
+console.log('[NextClarity-Worker] Initializing rendering worker...');
 
 // ==================== WORKER STATE ====================
 

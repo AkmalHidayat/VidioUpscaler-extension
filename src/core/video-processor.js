@@ -1,5 +1,5 @@
 /**
- * @fileoverview Core Video Processor for Anime4K Web Upscaler
+ * @fileoverview Core Video Processor for NextClarity
  * Main class that handles video processing, WebGL setup, and render loop.
  * @version 2.8.1
  */

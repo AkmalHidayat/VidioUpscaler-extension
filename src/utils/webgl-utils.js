@@ -1,5 +1,5 @@
 /**
- * @fileoverview WebGL utility functions for Anime4K Web Upscaler
+ * @fileoverview WebGL utility functions for NextClarity
  * Contains all WebGL-related helper functions for shader compilation,
  * program creation, and context management.
  * @version 2.8.1

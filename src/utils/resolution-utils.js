@@ -1,5 +1,5 @@
 /**
- * @fileoverview Resolution utility functions for Anime4K Web Upscaler
+ * @fileoverview Resolution utility functions for NextClarity
  * Contains functions for calculating target resolutions and quality caps.
  * @version 2.8.1
  */

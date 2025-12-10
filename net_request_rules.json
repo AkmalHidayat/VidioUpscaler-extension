@@ -26,11 +26,17 @@
             ],
             "excludedInitiatorDomains": [
                 "youtube.com",
-                "www.youtube.com"
+                "www.youtube.com",
+                "doubleclick.net",
+                "googleads.g.doubleclick.net"
             ],
             "excludedRequestDomains": [
                 "youtube.com",
-                "googlevideo.com"
+                "googlevideo.com",
+                "doubleclick.net",
+                "googleads.g.doubleclick.net",
+                "google.com",
+                "googleapis.com"
             ]
         }
     }

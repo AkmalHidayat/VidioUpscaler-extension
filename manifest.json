@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Anime4K Web Upscaler",
-  "version": "2.8.3",
-  "description": "Real-time video upscaling with Anime4K, FSR, and more. Refactored modular codebase.",
+  "name": "NextClarity",
+  "version": "2.8.7",
+  "description": "Real-time video upscaling with advanced AI shaders including Anime4K, FSR, and more.",
   "content_scripts": [
     {
       "matches": [
@@ -11,6 +11,7 @@
       "all_frames": true,
       "js": [
         "src/config.js",
+        "src/utils/logger.js",
         "src/utils/webgl-utils.js",
         "src/utils/dom-utils.js",
         "src/utils/shader-utils.js",

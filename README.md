@@ -1,6 +1,6 @@
-# ⚡ VidioUpscaler Extension (Anime4K Web)
+# ⚡ NextClarity - Video Upscaler Extension
 
-![Version](https://img.shields.io/badge/version-2.8.2-green?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-2.8.7-green?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)
 ![Status](https://img.shields.io/badge/status-Stable-4ade80?style=for-the-badge)
 
@@ -63,7 +63,7 @@ Choose from **10 different algorithms** to best suit your content:
 ## 🎮 How to Use
 
 1. Open any video (e.g., YouTube).
-2. The extension automatically activates. You'll see a green **"✨ Anime4K ON"** button.
+2. The extension automatically activates. You'll see a green **"✨ NextClarity ON"** button.
 3. **Shortcuts**:
     - `Alt + U`: Toggle ON/OFF
     - Click Extension Icon: Open Settings Panel

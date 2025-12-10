@@ -1,5 +1,5 @@
 /**
- * @fileoverview Main entry point for Anime4K popup script
+ * @fileoverview Main entry point for NextClarity popup script
  * Handles popup UI, settings management, and user interactions.
  * @version 2.8.1
  */
@@ -8,7 +8,7 @@
 
 // Get configuration from shared module
 const Config = window.Anime4KConfig || {};
-const DEFAULT_CONFIG = Config.DEFAULT_CONFIG || {
+const PopupDefaultConfig = Config.DEFAULT_CONFIG || {
     model: 'anime4k_v41_fast',
     resolution: '2x',
     customScale: 2.0,
@@ -24,7 +24,7 @@ const DEFAULT_CONFIG = Config.DEFAULT_CONFIG || {
     maxInstances: 3
 };
 
-const PERFORMANCE = Config.PERFORMANCE_CONSTANTS || {
+const PopupPerformance = Config.PERFORMANCE_CONSTANTS || {
     MIN_INSTANCES: 1,
     MAX_INSTANCES: 32
 };
@@ -59,7 +59,7 @@ const elements = {
 
 // ==================== STATE ====================
 
-let currentConfig = { ...DEFAULT_CONFIG };
+let currentConfig = { ...PopupDefaultConfig };
 
 // ==================== UTILITY FUNCTIONS ====================
 
@@ -72,8 +72,8 @@ function getClampedInstances(raw) {
     let v = parseInt(raw, 10);
     if (!isFinite(v) || isNaN(v)) v = 3;
 
-    const min = PERFORMANCE.MIN_INSTANCES || 1;
-    const max = PERFORMANCE.MAX_INSTANCES || 32;
+    const min = PopupPerformance.MIN_INSTANCES || 1;
+    const max = PopupPerformance.MAX_INSTANCES || 32;
 
     return Math.max(min, Math.min(max, v));
 }
@@ -83,8 +83,8 @@ function getClampedInstances(raw) {
  * @returns {boolean} True if valid
  */
 function validateMaxInstances() {
-    const min = PERFORMANCE.MIN_INSTANCES || 1;
-    const max = PERFORMANCE.MAX_INSTANCES || 32;
+    const min = PopupPerformance.MIN_INSTANCES || 1;
+    const max = PopupPerformance.MAX_INSTANCES || 32;
     const v = parseInt(elements.maxInstances.value, 10);
 
     if (isNaN(v) || v < min || v > max) {
@@ -227,8 +227,8 @@ elements.maxInstances.addEventListener('input', validateMaxInstances);
 
 // Arrow key support for max-instances
 elements.maxInstances.addEventListener('keydown', (e) => {
-    const min = PERFORMANCE.MIN_INSTANCES || 1;
-    const max = PERFORMANCE.MAX_INSTANCES || 32;
+    const min = PopupPerformance.MIN_INSTANCES || 1;
+    const max = PopupPerformance.MAX_INSTANCES || 32;
     let v = parseInt(elements.maxInstances.value, 10) || min;
 
     if (e.key === 'ArrowUp') {
@@ -250,7 +250,7 @@ elements.maxInstances.addEventListener('keydown', (e) => {
 if (elements.maxDec && elements.maxInc) {
     elements.maxDec.addEventListener('click', (e) => {
         e.preventDefault();
-        const min = PERFORMANCE.MIN_INSTANCES || 1;
+        const min = PopupPerformance.MIN_INSTANCES || 1;
         let v = parseInt(elements.maxInstances.value, 10) || min;
         v = Math.max(min, v - 1);
         elements.maxInstances.value = v;
@@ -260,7 +260,7 @@ if (elements.maxDec && elements.maxInc) {
 
     elements.maxInc.addEventListener('click', (e) => {
         e.preventDefault();
-        const max = PERFORMANCE.MAX_INSTANCES || 32;
+        const max = PopupPerformance.MAX_INSTANCES || 32;
         let v = parseInt(elements.maxInstances.value, 10) || 1;
         v = Math.min(max, v + 1);
         elements.maxInstances.value = v;
@@ -295,10 +295,10 @@ chrome.storage.onChanged.addListener((changes) => {
 // Load settings from storage
 chrome.storage.sync.get([STORAGE_KEY], (res) => {
     if (res && res[STORAGE_KEY]) {
-        currentConfig = { ...DEFAULT_CONFIG, ...res[STORAGE_KEY] };
+        currentConfig = { ...PopupDefaultConfig, ...res[STORAGE_KEY] };
     } else {
         // Fallback to flat keys
-        chrome.storage.sync.get(DEFAULT_CONFIG, (items) => {
+        chrome.storage.sync.get(PopupDefaultConfig, (items) => {
             currentConfig = items;
             populateFields(currentConfig);
         });
