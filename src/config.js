@@ -166,7 +166,8 @@ const WEBGL_CONSTANTS = Object.freeze({
         antialias: false,
         depth: false,
         stencil: false,
-        preserveDrawingBuffer: false
+        preserveDrawingBuffer: false,
+        powerPreference: 'high-performance'
     }
 });
 
@@ -237,7 +238,9 @@ const POST_PROCESSING_SHADER = Object.freeze({
 
         vec3 applyVibrance(vec3 color, float strength) {
             vec3 hsv = rgb2hsv(color);
-            hsv.y *= (1.0 + strength);
+            // Selectively boost less-saturated colors (true vibrance behavior):
+            // high-saturation pixels receive less boost, preventing hue clipping.
+            hsv.y = clamp(hsv.y + strength * (1.0 - hsv.y), 0.0, 1.0);
             return hsv2rgb(hsv);
         }
 
@@ -255,9 +258,12 @@ const POST_PROCESSING_SHADER = Object.freeze({
             res = applyVibrance(res, u_vibrance);
         }
 
-        // Deband (Simple Dither)
+        // Deband (Triangle-distributed dither for smoother gradients)
         if (u_deband > 0.5) {
-            float noise = (rand(v_texCoord) - 0.5) / 255.0;
+            float r1 = rand(v_texCoord);
+            // Offset uses golden-ratio-derived constants to decorrelate the two samples
+            float r2 = rand(v_texCoord + vec2(0.383, 0.197));
+            float noise = (r1 + r2 - 1.0) / 255.0;
             res += noise;
         }
 

@@ -76,7 +76,8 @@ const WebGLUtils = {
             antialias: false,
             depth: false,
             stencil: false,
-            preserveDrawingBuffer: false
+            preserveDrawingBuffer: false,
+            powerPreference: 'high-performance'
         };
 
         let gl = null;
